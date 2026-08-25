@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   BatteryCharging,
+  Camera,
   Check,
   CaretRight as ChevronRight,
   Stack as Layers3,
   Crosshair as LocateFixed,
   ArrowsOut as Maximize2,
   ArrowCounterClockwise as RotateCcw,
+  CloudFog,
   Sun,
   Warning as TriangleAlert,
   Wind,
@@ -32,9 +34,9 @@ const DEFAULT_OFFLINE_MANIFEST = {
   terrainEncoding: 'terrarium',
 }
 const DEFAULT_CAMERA = {
-  center: [101.496141, 27.6215],
-  zoom: 10.9,
-  pitch: 70,
+  center: [101.487116, 27.566619],
+  zoom: 12.92,
+  pitch: 85,
   bearing: 0,
 }
 const TERRAIN_SOURCE_ID = 'ops-terrain-dem'
@@ -42,16 +44,19 @@ const TERRAIN_HILLSHADE_SOURCE_ID = 'ops-terrain-hillshade-dem'
 const TERRAIN_HILLSHADE_LAYER_ID = 'ops-terrain-hillshade'
 const TERRAIN_EXAGGERATION = 1.2
 const TERRAIN_ATTRIBUTION = '<a href="https://mapterhorn.com/attribution" target="_blank">© Mapterhorn</a>'
+const HIGH_PITCH_TRANSITION_THRESHOLD = 70
 // MapLibre's native terrain-aware atmosphere fades in between 60° and 70° pitch.
 const OFFLINE_ATMOSPHERE = {
-  'sky-color': '#081721',
-  'horizon-color': '#354d56',
-  'fog-color': '#24363c',
-  'fog-ground-blend': 0.62,
-  'horizon-fog-blend': 0.82,
-  'sky-horizon-blend': 0.58,
+  'sky-color': '#0a1a24',
+  'horizon-color': '#272e30',
+  'fog-color': '#1d2325',
+  // Keep the foreground clear and move the native fog blend toward the horizon.
+  'fog-ground-blend': 0.8,
+  'horizon-fog-blend': 0.9,
+  'sky-horizon-blend': 0.8,
   'atmosphere-blend': 0,
 }
+const DEFAULT_FOG_OVERLAY_OPACITY = 0.92
 const STATION_COORDINATES = {
   kela: [101.0156, 30.0299],
   zhalashan: [101.672, 28.142],
@@ -70,6 +75,19 @@ const LIGHT_PRESETS = [
   ['day', '白昼'],
   ['dusk', '黄昏'],
   ['night', '夜景'],
+]
+const CAMERA_PARAMETER_FIELDS = [
+  { name: 'longitude', label: '中心经度', unit: '°E', min: 100, max: 102.1, step: '0.000001' },
+  { name: 'latitude', label: '中心纬度', unit: '°N', min: 27, max: 30.6, step: '0.000001' },
+  { name: 'zoom', label: '缩放级别', unit: '级', min: 5.5, max: 15, step: '0.01' },
+  { name: 'pitch', label: '俯仰角', unit: '°', min: 0, max: 85, step: '0.1' },
+  { name: 'bearing', label: '方位角', unit: '°', min: -180, max: 180, step: '0.1' },
+]
+const ATMOSPHERE_PARAMETER_FIELDS = [
+  { name: 'fogOpacity', label: '雾气浓度', detail: '越大 = 覆盖越明显', min: 0, max: 1, step: '0.01' },
+  { name: 'fogGroundBlend', label: '地表雾起点', detail: '越大 = 雾越靠远处', min: 0.05, max: 1, step: '0.01' },
+  { name: 'horizonFogBlend', label: '远景融入天际', detail: '更小 = 远山更快融入天际', min: 0.05, max: 0.95, step: '0.01' },
+  { name: 'skyHorizonBlend', label: '天际过渡', detail: '天空与地平线过渡宽度', min: 0, max: 1, step: '0.01' },
 ]
 let offlineProtocolState = null
 
@@ -159,6 +177,213 @@ function getCameraSnapshot(map, terrainElevationScale = 1) {
   const elevation = map.queryTerrainElevation?.(center, { exaggerated: false })
   if (Number.isFinite(elevation)) camera.elevation = elevation / terrainElevationScale
   return camera
+}
+
+function formatCameraNumber(value, fallback, digits) {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric.toFixed(digits) : Number(fallback).toFixed(digits)
+}
+
+function createCameraDraft(camera = DEFAULT_CAMERA) {
+  const center = Array.isArray(camera?.center) ? camera.center : DEFAULT_CAMERA.center
+  return {
+    longitude: formatCameraNumber(center[0], DEFAULT_CAMERA.center[0], 6),
+    latitude: formatCameraNumber(center[1], DEFAULT_CAMERA.center[1], 6),
+    zoom: formatCameraNumber(camera?.zoom, DEFAULT_CAMERA.zoom, 2),
+    pitch: formatCameraNumber(camera?.pitch, DEFAULT_CAMERA.pitch, 1),
+    bearing: formatCameraNumber(camera?.bearing, DEFAULT_CAMERA.bearing, 1),
+  }
+}
+
+function parseCameraDraft(draft) {
+  const values = Object.fromEntries(CAMERA_PARAMETER_FIELDS.map(({ name }) => [name, Number(draft[name])]))
+  const invalidField = CAMERA_PARAMETER_FIELDS.find(({ name }) => !Number.isFinite(values[name]))
+  if (invalidField) return { error: `请填写有效的${invalidField.label}` }
+
+  const outOfRangeField = CAMERA_PARAMETER_FIELDS.find(({ name, min, max }) => values[name] < min || values[name] > max)
+  if (outOfRangeField) return { error: `${outOfRangeField.label}范围为 ${outOfRangeField.min}–${outOfRangeField.max}` }
+
+  return {
+    camera: {
+      center: [values.longitude, values.latitude],
+      zoom: values.zoom,
+      pitch: values.pitch,
+      bearing: values.bearing,
+    },
+  }
+}
+
+function moveMapCamera(map, camera, { duration = 680 } = {}) {
+  if (!map) return
+  // Avoid interpolation changing a steep terrain view while it is settling.
+  if (Number(camera?.pitch) > HIGH_PITCH_TRANSITION_THRESHOLD) {
+    map.jumpTo(camera)
+    return
+  }
+  map.easeTo({ ...camera, duration, essential: true })
+}
+
+function createAtmosphereDraft(atmosphere = OFFLINE_ATMOSPHERE, overlayOpacity = DEFAULT_FOG_OVERLAY_OPACITY) {
+  return {
+    fogColor: atmosphere['fog-color'],
+    horizonColor: atmosphere['horizon-color'],
+    fogOpacity: formatCameraNumber(overlayOpacity, DEFAULT_FOG_OVERLAY_OPACITY, 2),
+    fogGroundBlend: formatCameraNumber(atmosphere['fog-ground-blend'], OFFLINE_ATMOSPHERE['fog-ground-blend'], 2),
+    horizonFogBlend: formatCameraNumber(atmosphere['horizon-fog-blend'], OFFLINE_ATMOSPHERE['horizon-fog-blend'], 2),
+    skyHorizonBlend: formatCameraNumber(atmosphere['sky-horizon-blend'], OFFLINE_ATMOSPHERE['sky-horizon-blend'], 2),
+  }
+}
+
+function parseAtmosphereDraft(draft) {
+  if (!/^#[0-9a-f]{6}$/i.test(draft.fogColor) || !/^#[0-9a-f]{6}$/i.test(draft.horizonColor)) {
+    return { error: '雾气颜色和地平线颜色需使用 6 位十六进制颜色' }
+  }
+  const values = Object.fromEntries(ATMOSPHERE_PARAMETER_FIELDS.map(({ name }) => [name, Number(draft[name])]))
+  const invalidField = ATMOSPHERE_PARAMETER_FIELDS.find(({ name }) => !Number.isFinite(values[name]))
+  if (invalidField) return { error: `请填写有效的${invalidField.label}` }
+  const outOfRangeField = ATMOSPHERE_PARAMETER_FIELDS.find(({ name, min, max }) => values[name] < min || values[name] > max)
+  if (outOfRangeField) return { error: `${outOfRangeField.label}范围为 ${outOfRangeField.min}–${outOfRangeField.max}` }
+
+  return {
+    atmosphere: {
+      ...OFFLINE_ATMOSPHERE,
+      'fog-color': draft.fogColor,
+      'horizon-color': draft.horizonColor,
+      'fog-ground-blend': values.fogGroundBlend,
+      'horizon-fog-blend': values.horizonFogBlend,
+      'sky-horizon-blend': values.skyHorizonBlend,
+    },
+    overlayOpacity: values.fogOpacity,
+  }
+}
+
+function withAlpha(hex, alpha) {
+  const value = String(hex || '').replace('#', '')
+  if (!/^[0-9a-f]{6}$/i.test(value)) return `rgba(95, 121, 128, ${alpha})`
+  const red = Number.parseInt(value.slice(0, 2), 16)
+  const green = Number.parseInt(value.slice(2, 4), 16)
+  const blue = Number.parseInt(value.slice(4, 6), 16)
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`
+}
+
+function createFogOverlayStyle(atmosphere, opacity) {
+  const fog = atmosphere?.['fog-color']
+  const horizon = atmosphere?.['horizon-color']
+  return {
+    opacity,
+    mixBlendMode: 'screen',
+    background: `linear-gradient(180deg, transparent 0%, transparent 20%, ${withAlpha(horizon, 0.12)} 25%, ${withAlpha(horizon, 0.86)} 34%, ${withAlpha(fog, 0.74)} 40%, ${withAlpha(fog, 0.28)} 47%, transparent 56%, transparent 100%)`,
+  }
+}
+
+function CameraParameterPanel({ camera, draft, flat, mapReady, error, onChange, onCapture, onClose, onReset, onSubmit }) {
+  const elevation = Number(camera?.elevation)
+  const pitch = Number(draft.pitch)
+  const highPitch = Number.isFinite(pitch) && pitch > 70
+  const elevationLabel = Number.isFinite(elevation)
+    ? `${elevation.toLocaleString('zh-CN', { maximumFractionDigits: 0 })} m`
+    : '读取中'
+
+  return (
+    <form className="camera-parameter-panel" id="camera-parameter-panel" role="dialog" aria-labelledby="camera-parameter-title" onSubmit={onSubmit}>
+      <div className="camera-parameter-panel__header">
+        <div>
+          <span>LIVE CAMERA</span>
+          <strong id="camera-parameter-title"><Camera size={15} aria-hidden="true" />摄像机参数</strong>
+        </div>
+        <button className="camera-parameter-panel__close" type="button" aria-label="关闭摄像机参数面板" onClick={onClose}>×</button>
+      </div>
+
+      <div className="camera-parameter-panel__grid">
+        {CAMERA_PARAMETER_FIELDS.map((field) => (
+          <label key={field.name}>
+            <span>{field.label}<small>{field.unit}</small></span>
+            <input
+              aria-label={field.label}
+              disabled={!mapReady || (flat && field.name === 'pitch')}
+              inputMode="decimal"
+              max={field.max}
+              min={field.min}
+              name={field.name}
+              step={field.step}
+              type="number"
+              value={draft[field.name]}
+              onChange={onChange}
+            />
+          </label>
+        ))}
+      </div>
+
+      <div className="camera-parameter-panel__elevation">
+        <span>地表高程</span>
+        <strong>{elevationLabel}</strong>
+      </div>
+      <p className={`camera-parameter-panel__hint ${highPitch ? 'is-caution' : ''}`}>{flat ? '平面模式已锁定俯仰角；切换到 3D 后可调整。' : highPitch ? '70°以上为低空观察视角，近处山体可能遮挡画面。' : '拖动地图后，参数会在停止移动时自动刷新。'}</p>
+      {error ? <p className="camera-parameter-panel__error" role="alert">{error}</p> : null}
+
+      <div className="camera-parameter-panel__actions">
+        <button type="button" disabled={!camera} onClick={onCapture}>读取当前</button>
+        <button type="button" disabled={!mapReady} onClick={onReset}>复位默认</button>
+        <button className="is-primary" type="submit" disabled={!mapReady}>应用参数</button>
+      </div>
+    </form>
+  )
+}
+
+function AtmosphereParameterPanel({ draft, error, mapReady, offlineMap, onChange, onClose, onReset, onSubmit }) {
+  const disabled = !mapReady || !offlineMap
+
+  return (
+    <form className="atmosphere-parameter-panel" id="atmosphere-parameter-panel" role="dialog" aria-labelledby="atmosphere-parameter-title" onSubmit={onSubmit}>
+      <div className="atmosphere-parameter-panel__header">
+        <div>
+          <span>LOCAL ATMOSPHERE</span>
+          <strong id="atmosphere-parameter-title"><CloudFog size={16} aria-hidden="true" />大气与雾气</strong>
+        </div>
+        <button className="atmosphere-parameter-panel__close" type="button" aria-label="关闭大气与雾气面板" onClick={onClose}>×</button>
+      </div>
+
+      <div className="atmosphere-parameter-panel__colors">
+        <label>
+          <span>雾气颜色<small>FOG</small></span>
+          <div><input aria-label="雾气颜色" disabled={disabled} name="fogColor" type="color" value={draft.fogColor} onChange={onChange} /><output>{draft.fogColor}</output></div>
+        </label>
+        <label>
+          <span>地平线颜色<small>HORIZON</small></span>
+          <div><input aria-label="地平线颜色" disabled={disabled} name="horizonColor" type="color" value={draft.horizonColor} onChange={onChange} /><output>{draft.horizonColor}</output></div>
+        </label>
+      </div>
+
+      <div className="atmosphere-parameter-panel__controls">
+        {ATMOSPHERE_PARAMETER_FIELDS.map((field) => (
+          <label key={field.name}>
+            <span><strong>{field.label}</strong><small>{field.detail}</small></span>
+            <input
+              aria-label={field.label}
+              disabled={disabled}
+              inputMode="decimal"
+              max={field.max}
+              min={field.min}
+              name={field.name}
+              step={field.step}
+              type="number"
+              value={draft[field.name]}
+              onChange={onChange}
+            />
+          </label>
+        ))}
+      </div>
+
+      <p className="atmosphere-parameter-panel__hint">修改后会立即生效；仅在 3D 高视角显示。数值越小，雾越早覆盖山体。</p>
+      {!offlineMap ? <p className="atmosphere-parameter-panel__error" role="alert">当前为在线地图；此面板仅调整离线 3D 的本地大气。</p> : null}
+      {error ? <p className="atmosphere-parameter-panel__error" role="alert">{error}</p> : null}
+
+      <div className="atmosphere-parameter-panel__actions">
+        <button type="button" disabled={disabled} onClick={onReset}>复位雾气</button>
+        <button className="is-primary" type="submit" disabled={disabled}>应用雾气</button>
+      </div>
+    </form>
+  )
 }
 
 function getAlertCount(station) {
@@ -368,6 +593,8 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
   const [flat, setFlat] = useState(false)
   const [lightPreset, setLightPreset] = useState('night')
   const [layersOpen, setLayersOpen] = useState(false)
+  const [cameraPanelOpen, setCameraPanelOpen] = useState(false)
+  const [atmospherePanelOpen, setAtmospherePanelOpen] = useState(false)
   const [terrainEnabled, setTerrainEnabled] = useState(true)
   const [weatherEnabled, setWeatherEnabled] = useState(true)
   const [markersVisible, setMarkersVisible] = useState(true)
@@ -376,6 +603,12 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
   const [terrainError, setTerrainError] = useState('')
   const [mapSource, setMapSource] = useState('loading')
   const [cameraSnapshot, setCameraSnapshot] = useState(null)
+  const [cameraDraft, setCameraDraft] = useState(() => createCameraDraft(DEFAULT_CAMERA))
+  const [cameraInputError, setCameraInputError] = useState('')
+  const [atmosphereSettings, setAtmosphereSettings] = useState(() => ({ ...OFFLINE_ATMOSPHERE }))
+  const [atmosphereOverlayOpacity, setAtmosphereOverlayOpacity] = useState(DEFAULT_FOG_OVERLAY_OPACITY)
+  const [atmosphereDraft, setAtmosphereDraft] = useState(() => createAtmosphereDraft(OFFLINE_ATMOSPHERE, DEFAULT_FOG_OVERLAY_OPACITY))
+  const [atmosphereInputError, setAtmosphereInputError] = useState('')
   const selected = mapStations.find((station) => station.id === selectedId) || mapStations[0]
 
   const stationFeatures = useMemo(() => ({
@@ -415,6 +648,27 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
   operationalDataRef.current = { stationFeatures, corridor }
   syncMarkersRef.current = syncMarkers
 
+  useEffect(() => {
+    if (cameraSnapshot) setCameraDraft(createCameraDraft(cameraSnapshot))
+  }, [cameraSnapshot])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!mapReady || mapSource !== 'offline' || !map) return
+    map.setSky?.(atmosphereSettings)
+  }, [atmosphereSettings, mapReady, mapSource])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!mapReady || mapSource !== 'offline' || !map) return
+    const result = parseAtmosphereDraft(atmosphereDraft)
+    if (!result.error) {
+      map.setSky?.(result.atmosphere)
+      setAtmosphereSettings(result.atmosphere)
+      setAtmosphereOverlayOpacity(result.overlayOpacity)
+    }
+  }, [atmosphereDraft, mapReady, mapSource])
+
   useLayoutEffect(() => {
     let disposed = false
     let map
@@ -423,6 +677,9 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
     let offline = false
     let loaded = false
     let failed = false
+    let initialCameraApplied = false
+    let terrainContentAvailable = false
+    let terrainElevationRefreshFrame = 0
     let loadTimeout
     let contextLostHandler
     const handleMapMove = () => syncMarkersRef.current()
@@ -436,6 +693,20 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
       if (import.meta.env.DEV) console.info('[DigitalTwin] camera', JSON.stringify(camera))
     }
 
+    const queueTerrainElevationRefresh = () => {
+      if (disposed || !loaded || !map || terrainElevationRefreshFrame) return
+      terrainElevationRefreshFrame = window.requestAnimationFrame(() => {
+        terrainElevationRefreshFrame = 0
+        publishCameraSnapshot()
+      })
+    }
+
+    const refreshTerrainElevation = (event) => {
+      if (!offline || event?.sourceId !== TERRAIN_SOURCE_ID || event?.sourceDataType !== 'content') return
+      terrainContentAvailable = true
+      queueTerrainElevationRefresh()
+    }
+
     const fail = (message) => {
       if (disposed || failed) return
       failed = true
@@ -447,6 +718,15 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
 
     const markMapReady = () => {
       if (disposed || loaded || failed) return
+      if (!initialCameraApplied) {
+        try {
+          // Re-apply after the first visual map tile settles the initial view.
+          map?.jumpTo({ ...DEFAULT_CAMERA })
+          initialCameraApplied = true
+        } catch {
+          // The constructor view remains available if a renderer rejects the final snap.
+        }
+      }
       loaded = true
       window.clearTimeout(loadTimeout)
       setMapReady(true)
@@ -454,6 +734,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
       setMapSource(offline ? 'offline' : 'online')
       handleMapMove()
       publishCameraSnapshot()
+      if (offline && terrainContentAvailable) queueTerrainElevationRefresh()
     }
 
     const markOfflineSourceReady = (event) => {
@@ -502,7 +783,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
             ...DEFAULT_CAMERA,
             antialias: true,
             attributionControl: false,
-            maxPitch: 70,
+            maxPitch: 85,
             minZoom: 5.5,
             maxZoom: Math.max(15, Number(offlineManifest.maxZoom) || 12),
             maxBounds: offlineManifest.bounds || DEFAULT_OFFLINE_MANIFEST.bounds,
@@ -527,7 +808,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
             ...DEFAULT_CAMERA,
             antialias: true,
             attributionControl: false,
-            maxPitch: 80,
+            maxPitch: 85,
             minZoom: 5.5,
             maxZoom: 15,
             config: {
@@ -622,6 +903,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
         map.on('moveend', publishCameraSnapshot)
         map.on('resize', handleMapMove)
         map.on('sourcedata', markOfflineSourceReady)
+        map.on('sourcedata', refreshTerrainElevation)
         map.on('load', () => {
           if (!offline) markMapReady()
         })
@@ -678,11 +960,13 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
     return () => {
       disposed = true
       window.clearTimeout(loadTimeout)
+      if (terrainElevationRefreshFrame) window.cancelAnimationFrame(terrainElevationRefreshFrame)
       if (map) {
         map.off('move', handleMapMove)
         map.off('moveend', publishCameraSnapshot)
         map.off('resize', handleMapMove)
         map.off('sourcedata', markOfflineSourceReady)
+        map.off('sourcedata', refreshTerrainElevation)
         if (contextLostHandler) map.getCanvas().removeEventListener('webglcontextlost', contextLostHandler)
         map.remove()
       }
@@ -741,7 +1025,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
       if (map.getSource(TERRAIN_SOURCE_ID)) {
         map.setTerrain(!flat && terrainEnabled ? { source: TERRAIN_SOURCE_ID, exaggeration: TERRAIN_EXAGGERATION } : null)
       }
-      map.easeTo({ pitch: flat ? 0 : DEFAULT_CAMERA.pitch, bearing: flat ? 0 : DEFAULT_CAMERA.bearing, duration: 720, essential: true })
+      moveMapCamera(map, { pitch: flat ? 0 : DEFAULT_CAMERA.pitch, bearing: flat ? 0 : DEFAULT_CAMERA.bearing }, { duration: 720 })
     } catch {
       // A terrain toggle failure should not blank an otherwise usable map.
     }
@@ -781,8 +1065,62 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
 
   const resetView = () => {
     setSelectedId(mapStations.find((station) => station.id === 'kela')?.id || mapStations[0]?.id)
-    mapRef.current?.easeTo({ ...DEFAULT_CAMERA, pitch: flat ? 0 : DEFAULT_CAMERA.pitch, bearing: flat ? 0 : DEFAULT_CAMERA.bearing, duration: 900, essential: true })
+    setCameraDraft(createCameraDraft({ ...DEFAULT_CAMERA, pitch: flat ? 0 : DEFAULT_CAMERA.pitch }))
+    setCameraInputError('')
+    moveMapCamera(mapRef.current, { ...DEFAULT_CAMERA, pitch: flat ? 0 : DEFAULT_CAMERA.pitch, bearing: flat ? 0 : DEFAULT_CAMERA.bearing }, { duration: 900 })
   }
+
+  const updateCameraDraft = useCallback((event) => {
+    const { name, value } = event.target
+    setCameraDraft((current) => ({ ...current, [name]: value }))
+    setCameraInputError('')
+  }, [])
+
+  const captureCameraParameters = useCallback(() => {
+    if (!cameraSnapshot) return
+    setCameraDraft(createCameraDraft(cameraSnapshot))
+    setCameraInputError('')
+  }, [cameraSnapshot])
+
+  const applyCameraParameters = useCallback((event) => {
+    event.preventDefault()
+    const map = mapRef.current
+    if (!mapReady || !map) return
+    const result = parseCameraDraft(cameraDraft)
+    if (result.error) {
+      setCameraInputError(result.error)
+      return
+    }
+    setCameraInputError('')
+    const nextCamera = { ...result.camera, pitch: flat ? 0 : result.camera.pitch }
+    moveMapCamera(map, nextCamera)
+  }, [cameraDraft, flat, mapReady])
+
+  const updateAtmosphereDraft = useCallback((event) => {
+    const { name, value } = event.target
+    setAtmosphereDraft((current) => ({ ...current, [name]: value }))
+    setAtmosphereInputError('')
+  }, [])
+
+  const resetAtmosphereParameters = useCallback(() => {
+    setAtmosphereSettings({ ...OFFLINE_ATMOSPHERE })
+    setAtmosphereOverlayOpacity(DEFAULT_FOG_OVERLAY_OPACITY)
+    setAtmosphereDraft(createAtmosphereDraft(OFFLINE_ATMOSPHERE, DEFAULT_FOG_OVERLAY_OPACITY))
+    setAtmosphereInputError('')
+  }, [])
+
+  const applyAtmosphereParameters = useCallback((event) => {
+    event.preventDefault()
+    const result = parseAtmosphereDraft(atmosphereDraft)
+    if (result.error) {
+      setAtmosphereInputError(result.error)
+      return
+    }
+    setAtmosphereSettings(result.atmosphere)
+    setAtmosphereOverlayOpacity(result.overlayOpacity)
+    setAtmosphereDraft(createAtmosphereDraft(result.atmosphere, result.overlayOpacity))
+    setAtmosphereInputError('')
+  }, [atmosphereDraft])
 
   const focusSelected = () => {
     if (!selected) return
@@ -820,7 +1158,9 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
             <button className={!flat ? 'is-active' : ''} type="button" onClick={() => setFlat(false)}>3D</button>
             <button className={flat ? 'is-active' : ''} type="button" onClick={() => setFlat(true)}>平面</button>
           </div>
-          <button className={layersOpen ? 'is-active' : ''} type="button" title="图层" aria-pressed={layersOpen} onClick={() => setLayersOpen((value) => !value)}><Layers3 size={16} /></button>
+          <button className={cameraPanelOpen ? 'is-active' : ''} type="button" title="摄像机参数" aria-pressed={cameraPanelOpen} aria-controls="camera-parameter-panel" onClick={() => { setCameraPanelOpen((value) => !value); setAtmospherePanelOpen(false); setLayersOpen(false) }} disabled={!mapReady}><Camera size={16} /></button>
+          <button className={atmospherePanelOpen ? 'is-active' : ''} type="button" title="大气与雾气参数" aria-pressed={atmospherePanelOpen} aria-controls="atmosphere-parameter-panel" onClick={() => { setAtmospherePanelOpen((value) => !value); setCameraPanelOpen(false); setLayersOpen(false) }} disabled={!mapReady}><CloudFog size={16} /></button>
+          <button className={layersOpen ? 'is-active' : ''} type="button" title="图层" aria-pressed={layersOpen} onClick={() => { setLayersOpen((value) => !value); setCameraPanelOpen(false); setAtmospherePanelOpen(false) }}><Layers3 size={16} /></button>
           <button type="button" title="定位选中电站" onClick={focusSelected} disabled={!mapReady}><LocateFixed size={16} /></button>
           <button type="button" title="复位视角" onClick={resetView} disabled={!mapReady}><RotateCcw size={16} /></button>
           <button type="button" title="切换全屏" onClick={toggleFullscreen}><Maximize2 size={16} /></button>
@@ -835,6 +1175,11 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
           data-camera={cameraSnapshot ? JSON.stringify(cameraSnapshot) : undefined}
           data-terrain={terrainError ? 'error' : !flat && terrainEnabled ? 'enabled' : 'disabled'}
           aria-label="雅砻江流域交互地图"
+        />
+        <div
+          className={`map-fog-overlay ${offlineMap && mapReady && !flat ? '' : 'is-hidden'}`}
+          style={createFogOverlayStyle(atmosphereSettings, atmosphereOverlayOpacity)}
+          aria-hidden="true"
         />
 
         {!mapError ? (
@@ -880,6 +1225,32 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
             {!offlineMap ? <button type="button" role="switch" aria-checked={weatherEnabled} onClick={() => setWeatherEnabled((value) => !value)}><span>高海拔气象粒子</span><i>{weatherEnabled ? <Check size={12} /> : null}</i></button> : null}
             <button type="button" role="switch" aria-checked={markersVisible} onClick={() => setMarkersVisible((value) => !value)}><span>电站状态标记</span><i>{markersVisible ? <Check size={12} /> : null}</i></button>
           </div>
+        ) : null}
+        {cameraPanelOpen ? (
+          <CameraParameterPanel
+            camera={cameraSnapshot}
+            draft={cameraDraft}
+            error={cameraInputError}
+            flat={flat}
+            mapReady={mapReady}
+            onCapture={captureCameraParameters}
+            onChange={updateCameraDraft}
+            onClose={() => setCameraPanelOpen(false)}
+            onReset={resetView}
+            onSubmit={applyCameraParameters}
+          />
+        ) : null}
+        {atmospherePanelOpen ? (
+          <AtmosphereParameterPanel
+            draft={atmosphereDraft}
+            error={atmosphereInputError}
+            mapReady={mapReady}
+            offlineMap={offlineMap}
+            onChange={updateAtmosphereDraft}
+            onClose={() => setAtmospherePanelOpen(false)}
+            onReset={resetAtmosphereParameters}
+            onSubmit={applyAtmosphereParameters}
+          />
         ) : null}
 
         {!mapReady && !mapError ? (

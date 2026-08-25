@@ -1388,7 +1388,7 @@ input::placeholder {
   content: '';
   background:
     linear-gradient(90deg, rgba(4, 8, 10, 0.18), transparent 30%, transparent 72%, rgba(4, 8, 10, 0.15)),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.16));
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.01), transparent 72%);
 }
 
 .map-static-fallback,
@@ -1417,6 +1417,21 @@ input::placeholder {
 .mapbox-canvas.is-ready {
   opacity: 1;
   pointer-events: auto;
+}
+
+.map-fog-overlay {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  filter: blur(0.6px);
+  transition: opacity 280ms ease;
+}
+
+.map-fog-overlay.is-hidden {
+  opacity: 0 !important;
 }
 
 .mapbox-canvas .mapboxgl-canvas,
@@ -1764,6 +1779,454 @@ input::placeholder {
 
 .map-station-detail.tone-urgent .map-detail-actions > em {
   color: var(--ops-urgent);
+}
+
+.camera-parameter-panel {
+  position: absolute;
+  z-index: 9;
+  top: 16px;
+  left: 16px;
+  width: 282px;
+  max-width: calc(100% - 32px);
+  padding: 12px;
+  border: 1px solid rgba(114, 168, 255, 0.3);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(41, 69, 79, 0.19), transparent 44%),
+    rgba(14, 20, 23, 0.94);
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.43), inset 0 1px rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
+}
+
+.camera-parameter-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 11px;
+}
+
+.camera-parameter-panel__header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.camera-parameter-panel__header span {
+  color: #75a9bc;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.camera-parameter-panel__header strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #f0f5f6;
+  font-size: 13px;
+}
+
+.camera-parameter-panel__header strong svg {
+  color: #83c7d8;
+}
+
+.camera-parameter-panel__close {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--ops-text-tertiary);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.camera-parameter-panel__close:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #fff;
+}
+
+.camera-parameter-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.camera-parameter-panel__grid label {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.camera-parameter-panel__grid label > span {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  color: #aab9be;
+  font-size: 10px;
+}
+
+.camera-parameter-panel__grid label > span small {
+  color: #62747b;
+  font-size: 9px;
+}
+
+.camera-parameter-panel__grid input {
+  width: 100%;
+  height: 31px;
+  padding: 0 7px;
+  border: 1px solid rgba(151, 178, 191, 0.2);
+  border-radius: 5px;
+  outline: none;
+  background: rgba(3, 8, 10, 0.5);
+  color: #e7f2f4;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.camera-parameter-panel__grid input:hover {
+  border-color: rgba(131, 199, 216, 0.42);
+}
+
+.camera-parameter-panel__grid input:focus {
+  border-color: #75a9bc;
+  box-shadow: 0 0 0 3px rgba(117, 169, 188, 0.12);
+}
+
+.camera-parameter-panel__grid input:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.camera-parameter-panel__elevation {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding: 8px 9px;
+  border: 1px solid rgba(131, 199, 216, 0.13);
+  border-radius: 6px;
+  background: rgba(131, 199, 216, 0.055);
+}
+
+.camera-parameter-panel__elevation span {
+  color: #8ea4ab;
+  font-size: 10px;
+}
+
+.camera-parameter-panel__elevation strong {
+  color: #a6e5d5;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.camera-parameter-panel__hint,
+.camera-parameter-panel__error {
+  margin: 8px 0 0;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.camera-parameter-panel__hint {
+  color: #71878e;
+}
+
+.camera-parameter-panel__hint.is-caution {
+  color: #e2b56e;
+}
+
+.camera-parameter-panel__error {
+  color: #ffb2a9;
+}
+
+.camera-parameter-panel__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.2fr;
+  gap: 6px;
+  margin-top: 11px;
+}
+
+.camera-parameter-panel__actions button {
+  height: 30px;
+  padding: 0 6px;
+  border: 1px solid rgba(151, 178, 191, 0.18);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #b5c3c8;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.camera-parameter-panel__actions button:hover:not(:disabled) {
+  border-color: rgba(131, 199, 216, 0.46);
+  color: #f4f8f9;
+  background: rgba(131, 199, 216, 0.09);
+}
+
+.camera-parameter-panel__actions button.is-primary {
+  border-color: rgba(105, 185, 204, 0.65);
+  background: rgba(66, 138, 155, 0.26);
+  color: #e6fafc;
+}
+
+.camera-parameter-panel__actions button.is-primary:hover:not(:disabled) {
+  background: rgba(82, 164, 183, 0.4);
+}
+
+.camera-parameter-panel__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.atmosphere-parameter-panel {
+  position: absolute;
+  z-index: 9;
+  top: 16px;
+  left: 16px;
+  width: 282px;
+  max-width: calc(100% - 32px);
+  max-height: calc(100% - 32px);
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid rgba(121, 183, 194, 0.33);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 80% 0%, rgba(121, 183, 194, 0.16), transparent 38%),
+    linear-gradient(145deg, rgba(47, 77, 83, 0.18), transparent 52%),
+    rgba(12, 20, 23, 0.95);
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.43), inset 0 1px rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
+  scrollbar-width: thin;
+}
+
+.atmosphere-parameter-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.atmosphere-parameter-panel__header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.atmosphere-parameter-panel__header span {
+  color: #75a9bc;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.atmosphere-parameter-panel__header strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #f0f5f6;
+  font-size: 13px;
+}
+
+.atmosphere-parameter-panel__header strong svg {
+  color: #9ed6df;
+}
+
+.atmosphere-parameter-panel__close {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--ops-text-tertiary);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.atmosphere-parameter-panel__close:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #fff;
+}
+
+.atmosphere-parameter-panel__colors {
+  display: grid;
+  gap: 7px;
+}
+
+.atmosphere-parameter-panel__colors label {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 8px;
+  border: 1px solid rgba(151, 178, 191, 0.16);
+  border-radius: 6px;
+  background: rgba(3, 8, 10, 0.33);
+}
+
+.atmosphere-parameter-panel__colors label > span {
+  display: grid;
+  gap: 1px;
+  color: #b3c2c6;
+  font-size: 10px;
+}
+
+.atmosphere-parameter-panel__colors label small {
+  color: #62747b;
+  font-size: 8px;
+  letter-spacing: 0.07em;
+}
+
+.atmosphere-parameter-panel__colors label > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.atmosphere-parameter-panel__colors input[type='color'] {
+  width: 26px;
+  height: 24px;
+  padding: 2px;
+  border: 1px solid rgba(151, 178, 191, 0.27);
+  border-radius: 4px;
+  background: transparent;
+}
+
+.atmosphere-parameter-panel__colors input[type='color']:disabled {
+  opacity: 0.45;
+}
+
+.atmosphere-parameter-panel__colors output {
+  min-width: 58px;
+  color: #9ccbd3;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+}
+
+.atmosphere-parameter-panel__controls {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.atmosphere-parameter-panel__controls label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 67px;
+  align-items: center;
+  gap: 8px;
+}
+
+.atmosphere-parameter-panel__controls label > span {
+  display: grid;
+  gap: 2px;
+}
+
+.atmosphere-parameter-panel__controls label strong {
+  color: #b6c5c9;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.atmosphere-parameter-panel__controls label small {
+  color: #63777d;
+  font-size: 8px;
+}
+
+.atmosphere-parameter-panel__controls input {
+  width: 100%;
+  height: 30px;
+  padding: 0 7px;
+  border: 1px solid rgba(151, 178, 191, 0.2);
+  border-radius: 5px;
+  outline: none;
+  background: rgba(3, 8, 10, 0.5);
+  color: #e7f2f4;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.atmosphere-parameter-panel__controls input:focus {
+  border-color: #75a9bc;
+  box-shadow: 0 0 0 3px rgba(117, 169, 188, 0.12);
+}
+
+.atmosphere-parameter-panel__controls input:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.atmosphere-parameter-panel__hint,
+.atmosphere-parameter-panel__error {
+  margin: 10px 0 0;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.atmosphere-parameter-panel__hint {
+  color: #76929a;
+}
+
+.atmosphere-parameter-panel__error {
+  color: #ffb2a9;
+}
+
+.atmosphere-parameter-panel__actions {
+  position: sticky;
+  z-index: 1;
+  bottom: -12px;
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 6px;
+  margin: 11px -1px -12px;
+  padding: 9px 1px 12px;
+  background: linear-gradient(180deg, rgba(12, 20, 23, 0), rgba(12, 20, 23, 0.98) 34%);
+}
+
+.atmosphere-parameter-panel__actions button {
+  height: 31px;
+  padding: 0 8px;
+  border: 1px solid rgba(151, 178, 191, 0.18);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #b5c3c8;
+  font-size: 10px;
+}
+
+.atmosphere-parameter-panel__actions button:hover:not(:disabled) {
+  border-color: rgba(131, 199, 216, 0.46);
+  color: #f4f8f9;
+  background: rgba(131, 199, 216, 0.09);
+}
+
+.atmosphere-parameter-panel__actions button.is-primary {
+  border-color: rgba(105, 185, 204, 0.65);
+  background: rgba(66, 138, 155, 0.26);
+  color: #e6fafc;
+}
+
+.atmosphere-parameter-panel__actions button.is-primary:hover:not(:disabled) {
+  background: rgba(82, 164, 183, 0.4);
+}
+
+.atmosphere-parameter-panel__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+@media (max-width: 720px) {
+  .camera-parameter-panel,
+  .atmosphere-parameter-panel {
+    top: 12px;
+    left: 12px;
+    max-width: calc(100% - 24px);
+  }
 }
 
 .map-layer-menu {
