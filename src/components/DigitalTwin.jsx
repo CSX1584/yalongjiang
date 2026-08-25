@@ -13,17 +13,45 @@ import {
 } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import 'maplibre-gl/dist/maplibre-gl.css'
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { stations as fallbackStations } from '../data/demoData'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN?.trim()
+const MAP_MODE = import.meta.env.VITE_MAP_MODE?.trim().toLowerCase() || 'auto'
+const OFFLINE_BASEMAP_URL = './offline-map/yalongjiang.pmtiles'
+const OFFLINE_TERRAIN_URL = './offline-map/yalongjiang-terrain.pmtiles'
+const DEFAULT_OFFLINE_MANIFEST = {
+  style: './offline-map/style.json',
+  basemap: OFFLINE_BASEMAP_URL,
+  terrain: OFFLINE_TERRAIN_URL,
+  bounds: [100, 27, 102.1, 30.6],
+  maxZoom: 12,
+  terrainMaxZoom: 8,
+  terrainTileSize: 512,
+  terrainEncoding: 'terrarium',
+}
 const DEFAULT_CAMERA = {
   center: [101.496141, 27.6215],
-  zoom: 11.764689,
-  pitch: 80,
+  zoom: 10.9,
+  pitch: 70,
   bearing: 0,
 }
 const TERRAIN_SOURCE_ID = 'ops-terrain-dem'
-const TERRAIN_EXAGGERATION = 1.32
+const TERRAIN_HILLSHADE_SOURCE_ID = 'ops-terrain-hillshade-dem'
+const TERRAIN_HILLSHADE_LAYER_ID = 'ops-terrain-hillshade'
+const TERRAIN_EXAGGERATION = 1.2
+const TERRAIN_ATTRIBUTION = '<a href="https://mapterhorn.com/attribution" target="_blank">© Mapterhorn</a>'
+// MapLibre's native terrain-aware atmosphere fades in between 60° and 70° pitch.
+const OFFLINE_ATMOSPHERE = {
+  'sky-color': '#081721',
+  'horizon-color': '#354d56',
+  'fog-color': '#24363c',
+  'fog-ground-blend': 0.62,
+  'horizon-fog-blend': 0.82,
+  'sky-horizon-blend': 0.58,
+  'atmosphere-blend': 0,
+}
 const STATION_COORDINATES = {
   kela: [101.0156, 30.0299],
   zhalashan: [101.672, 28.142],
@@ -43,15 +71,94 @@ const LIGHT_PRESETS = [
   ['dusk', '黄昏'],
   ['night', '夜景'],
 ]
+let offlineProtocolState = null
 
-function getCameraSnapshot(map) {
-  const center = map.getCenter()
+class WholeFilePmtilesSource {
+  constructor(url) {
+    this.url = url
+    this.filePromise = null
+  }
+
+  getKey() {
+    return this.url
+  }
+
+  async getBytes(offset, length) {
+    if (!this.filePromise) {
+      this.filePromise = fetch(this.url).then(async (response) => {
+        if (response.status >= 400) throw new Error(`offline map ${response.status}`)
+        const data = await response.arrayBuffer()
+        if (!data.byteLength) throw new Error('offline map file is empty')
+        return data
+      })
+    }
+
+    const data = await this.filePromise
+    const end = offset + length
+    if (offset < 0 || length < 0 || end > data.byteLength) {
+      throw new Error(`offline map byte range ${offset}-${end - 1} is unavailable`)
+    }
+    return { data: data.slice(offset, end) }
+  }
+}
+
+function toPmtilesUrl(assetUrl) {
+  const url = String(assetUrl || '').trim()
+  return url.startsWith('pmtiles://') ? url : `pmtiles://${url}`
+}
+
+function createOfflineTerrainSource(manifest) {
   return {
+    type: 'raster-dem',
+    url: toPmtilesUrl(manifest.terrain || OFFLINE_TERRAIN_URL),
+    tileSize: Number(manifest.terrainTileSize) || 512,
+    maxzoom: Number(manifest.terrainMaxZoom) || 8,
+    bounds: manifest.bounds || DEFAULT_OFFLINE_MANIFEST.bounds,
+    encoding: manifest.terrainEncoding || 'terrarium',
+    attribution: TERRAIN_ATTRIBUTION,
+  }
+}
+
+function acquireOfflineProtocol(maplibregl, Protocol, PMTiles, archiveUrls) {
+  if (!offlineProtocolState) {
+    const protocol = new Protocol()
+    const packagedFile = window.location.protocol === 'file:'
+    const createArchive = (url) => new PMTiles(packagedFile ? new WholeFilePmtilesSource(url) : url)
+
+    maplibregl.addProtocol('pmtiles', protocol.tile)
+    offlineProtocolState = { maplibregl, protocol, createArchive, references: 0 }
+  }
+
+  archiveUrls.forEach((url) => {
+    if (url && !offlineProtocolState.protocol.get(url)) {
+      offlineProtocolState.protocol.add(offlineProtocolState.createArchive(url))
+    }
+  })
+
+  offlineProtocolState.references += 1
+  return offlineProtocolState.protocol
+}
+
+function releaseOfflineProtocol(protocol) {
+  if (!offlineProtocolState || offlineProtocolState.protocol !== protocol) return
+  offlineProtocolState.references -= 1
+  if (offlineProtocolState.references > 0) return
+
+  offlineProtocolState.maplibregl.removeProtocol('pmtiles')
+  offlineProtocolState = null
+}
+
+function getCameraSnapshot(map, terrainElevationScale = 1) {
+  const center = map.getCenter()
+  const camera = {
     center: [center.lng, center.lat],
     zoom: map.getZoom(),
     pitch: map.getPitch(),
     bearing: map.getBearing(),
   }
+  const elevation = map.queryTerrainElevation?.(center, { exaggerated: false })
+  if (Number.isFinite(elevation)) camera.elevation = elevation / terrainElevationScale
+  return camera
 }
 
 function getAlertCount(station) {
@@ -77,33 +184,54 @@ function StationIcon({ type }) {
   return <Sun size={15} />
 }
 
-function addOperationalLayers(map, stations, corridor) {
+async function loadOfflineManifest() {
+  if (MAP_MODE === 'online') return null
+  const packagedFile = typeof window !== 'undefined' && window.location.protocol === 'file:'
+  try {
+    const response = await fetch('./offline-map/manifest.json', { cache: 'no-store' })
+    if (!response.ok && !(packagedFile && response.status === 0)) {
+      throw new Error(`offline manifest ${response.status}`)
+    }
+    return { ...DEFAULT_OFFLINE_MANIFEST, ...(await response.json()) }
+  } catch (error) {
+    if (MAP_MODE === 'offline') return DEFAULT_OFFLINE_MANIFEST
+    if (import.meta.env.DEV) console.info('[DigitalTwin] offline map not found', error)
+    return null
+  }
+}
+
+function addOperationalLayers(map, stations, corridor, { offline = false } = {}) {
+  const layerOrder = offline ? {} : { slot: 'middle' }
+  const markerOrder = offline ? {} : { slot: 'top' }
+  const lineEmissive = offline ? {} : { 'line-emissive-strength': 1 }
+  const circleEmissive = offline ? {} : { 'circle-emissive-strength': 1 }
+
   if (!map.getSource('ops-corridor')) {
     map.addSource('ops-corridor', { type: 'geojson', data: corridor })
     map.addLayer({
       id: 'ops-corridor-glow',
       type: 'line',
       source: 'ops-corridor',
-      slot: 'middle',
+      ...layerOrder,
       paint: {
         'line-color': '#37a2ff',
         'line-width': 9,
         'line-opacity': 0.1,
         'line-blur': 5,
-        'line-emissive-strength': 1,
+        ...lineEmissive,
       },
     })
     map.addLayer({
       id: 'ops-corridor-line',
       type: 'line',
       source: 'ops-corridor',
-      slot: 'middle',
+      ...layerOrder,
       paint: {
         'line-color': '#5291ff',
         'line-width': 1.4,
         'line-opacity': 0.68,
         'line-dasharray': [2, 2],
-        'line-emissive-strength': 1,
+        ...lineEmissive,
       },
     })
   }
@@ -114,26 +242,26 @@ function addOperationalLayers(map, stations, corridor) {
       id: 'ops-station-glow',
       type: 'circle',
       source: 'ops-stations',
-      slot: 'top',
+      ...markerOrder,
       paint: {
         'circle-radius': 20,
         'circle-color': ['get', 'color'],
         'circle-opacity': 0.12,
         'circle-blur': 0.75,
-        'circle-emissive-strength': 1,
+        ...circleEmissive,
       },
     })
     map.addLayer({
       id: 'ops-station-core',
       type: 'circle',
       source: 'ops-stations',
-      slot: 'top',
+      ...markerOrder,
       paint: {
         'circle-radius': 4,
         'circle-color': ['get', 'color'],
         'circle-stroke-width': 1.5,
         'circle-stroke-color': '#111517',
-        'circle-emissive-strength': 1,
+        ...circleEmissive,
       },
     })
   }
@@ -231,6 +359,8 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
   const markerRefs = useRef(new Map())
+  const operationalDataRef = useRef(null)
+  const syncMarkersRef = useRef(() => {})
   const mapStations = useMemo(() => (stations || fallbackStations)
     .map((station) => ({ ...station, mapCoordinates: STATION_COORDINATES[station.id] }))
     .filter((station) => station.mapCoordinates), [stations])
@@ -243,6 +373,8 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
   const [markersVisible, setMarkersVisible] = useState(true)
   const [mapReady, setMapReady] = useState(false)
   const [mapError, setMapError] = useState('')
+  const [terrainError, setTerrainError] = useState('')
+  const [mapSource, setMapSource] = useState('loading')
   const [cameraSnapshot, setCameraSnapshot] = useState(null)
   const selected = mapStations.find((station) => station.id === selectedId) || mapStations[0]
 
@@ -280,17 +412,24 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
       node.style.pointerEvents = visible ? 'auto' : 'none'
     })
   }, [mapStations])
+  operationalDataRef.current = { stationFeatures, corridor }
+  syncMarkersRef.current = syncMarkers
 
   useLayoutEffect(() => {
     let disposed = false
     let map
+    let maplibregl
+    let pmtilesProtocol
+    let offline = false
     let loaded = false
+    let failed = false
     let loadTimeout
     let contextLostHandler
+    const handleMapMove = () => syncMarkersRef.current()
 
     const publishCameraSnapshot = () => {
       if (disposed || !map) return
-      const camera = getCameraSnapshot(map)
+      const camera = getCameraSnapshot(map, offline ? TERRAIN_EXAGGERATION : 1)
       setCameraSnapshot(camera)
       window.__OPS_MAP_CAMERA__ = camera
       window.dispatchEvent(new CustomEvent('ops-map-camera-change', { detail: camera }))
@@ -298,61 +437,128 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
     }
 
     const fail = (message) => {
-      if (disposed) return
+      if (disposed || failed) return
+      failed = true
       window.clearTimeout(loadTimeout)
       setMapError(message)
       setMapReady(false)
+      setMapSource('fallback')
+    }
+
+    const markMapReady = () => {
+      if (disposed || loaded || failed) return
+      loaded = true
+      window.clearTimeout(loadTimeout)
+      setMapReady(true)
+      setMapError('')
+      setMapSource(offline ? 'offline' : 'online')
+      handleMapMove()
+      publishCameraSnapshot()
+    }
+
+    const markOfflineSourceReady = (event) => {
+      if (!offline || loaded || !map || !map.getSource('protomaps')) return
+      if (event?.sourceId !== 'protomaps') return
+      try {
+        const receivedTileContent = Boolean(event?.coord) && event?.tile?.state === 'loaded'
+        if (receivedTileContent) markMapReady()
+      } catch {
+        // Keep waiting for another successfully decoded basemap tile.
+      }
     }
 
     async function initializeMap() {
-      if (!MAPBOX_TOKEN) {
-        fail('缺少 Mapbox Public Token')
-        return
-      }
       try {
-        const { default: mapboxgl } = await import('mapbox-gl')
+        const offlineManifest = await loadOfflineManifest()
         if (disposed || !mapContainerRef.current) return
-        if (!mapboxgl.supported()) {
-          fail('当前浏览器不支持 WebGL 地图')
-          return
+
+        offline = Boolean(offlineManifest)
+        setMapSource(offline ? 'offline' : 'online')
+        if (offline) {
+          const [offlineMapLibreModule, { PMTiles, Protocol }] = await Promise.all([
+            import('maplibre-gl'),
+            import('pmtiles'),
+          ])
+          if (disposed || !mapContainerRef.current) return
+          maplibregl = offlineMapLibreModule.default || offlineMapLibreModule
+          maplibregl.setWorkerUrl(maplibreWorkerUrl)
+          const supported = typeof maplibregl.supported === 'function'
+            ? maplibregl.supported()
+            : typeof maplibregl.Map?.isSupported === 'function'
+              ? maplibregl.Map.isSupported()
+              : true
+          if (!supported) {
+            fail('当前浏览器不支持 WebGL 地图')
+            return
+          }
+          pmtilesProtocol = acquireOfflineProtocol(maplibregl, Protocol, PMTiles, [
+            offlineManifest.basemap || OFFLINE_BASEMAP_URL,
+            offlineManifest.terrain || OFFLINE_TERRAIN_URL,
+          ])
+          if (import.meta.env.DEV) window.__OPS_PMTILES_PROTOCOL__ = pmtilesProtocol
+          map = new maplibregl.Map({
+            container: mapContainerRef.current,
+            style: offlineManifest.style || DEFAULT_OFFLINE_MANIFEST.style,
+            ...DEFAULT_CAMERA,
+            antialias: true,
+            attributionControl: false,
+            maxPitch: 70,
+            minZoom: 5.5,
+            maxZoom: Math.max(15, Number(offlineManifest.maxZoom) || 12),
+            maxBounds: offlineManifest.bounds || DEFAULT_OFFLINE_MANIFEST.bounds,
+          })
+          map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right')
+          map.addControl(new maplibregl.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-left')
+        } else {
+          if (!MAPBOX_TOKEN) {
+            fail('缺少 Mapbox Public Token，且未找到离线地图包')
+            return
+          }
+          const { default: onlineMapbox } = await import('mapbox-gl')
+          if (disposed || !mapContainerRef.current) return
+          if (!onlineMapbox.supported()) {
+            fail('当前浏览器不支持 WebGL 地图')
+            return
+          }
+          onlineMapbox.accessToken = MAPBOX_TOKEN
+          map = new onlineMapbox.Map({
+            container: mapContainerRef.current,
+            style: 'mapbox://styles/mapbox/standard',
+            ...DEFAULT_CAMERA,
+            antialias: true,
+            attributionControl: false,
+            maxPitch: 80,
+            minZoom: 5.5,
+            maxZoom: 15,
+            config: {
+              basemap: {
+                lightPreset: 'night',
+                theme: 'monochrome',
+                show3dObjects: true,
+                showPointOfInterestLabels: false,
+                showTransitLabels: false,
+                showPedestrianRoads: false,
+                showRoadLabels: false,
+                showPlaceLabels: true,
+                colorPlaceLabels: '#d9e5eb',
+                colorRoadLabels: '#758894',
+                colorWater: '#07131d',
+                colorLand: '#233239',
+                colorGreenspace: '#223b34',
+                colorAdminBoundaries: '#53636e',
+                colorRoads: '#43545f',
+                colorMotorways: '#607889',
+                colorTrunks: '#526b7a',
+                colorBuildings: '#303e46',
+              },
+            },
+          })
+          map.addControl(new onlineMapbox.AttributionControl({ compact: true }), 'bottom-right')
+          map.addControl(new onlineMapbox.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-left')
         }
 
-        mapboxgl.accessToken = MAPBOX_TOKEN
-        map = new mapboxgl.Map({
-          container: mapContainerRef.current,
-          style: 'mapbox://styles/mapbox/standard',
-          ...DEFAULT_CAMERA,
-          antialias: true,
-          attributionControl: false,
-          maxPitch: 80,
-          minZoom: 5.5,
-          maxZoom: 15,
-          config: {
-            basemap: {
-              lightPreset: 'night',
-              theme: 'monochrome',
-              show3dObjects: true,
-              showPointOfInterestLabels: false,
-              showTransitLabels: false,
-              showPedestrianRoads: false,
-              showRoadLabels: false,
-              showPlaceLabels: true,
-              colorPlaceLabels: '#d9e5eb',
-              colorRoadLabels: '#758894',
-              colorWater: '#07131d',
-              colorLand: '#233239',
-              colorGreenspace: '#223b34',
-              colorAdminBoundaries: '#53636e',
-              colorRoads: '#43545f',
-              colorMotorways: '#607889',
-              colorTrunks: '#526b7a',
-              colorBuildings: '#303e46',
-            },
-          },
-        })
         mapRef.current = map
-        map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
-        map.addControl(new mapboxgl.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-left')
+        if (import.meta.env.DEV) window.__OPS_MAP_DEBUG__ = map
 
         contextLostHandler = () => fail('WebGL 上下文已丢失')
         map.getCanvas().addEventListener('webglcontextlost', contextLostHandler, { once: true })
@@ -360,42 +566,111 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
           if (disposed) return
           try {
             if (!map.getSource(TERRAIN_SOURCE_ID)) {
-              map.addSource(TERRAIN_SOURCE_ID, {
+              map.addSource(TERRAIN_SOURCE_ID, offline ? createOfflineTerrainSource(offlineManifest) : {
                 type: 'raster-dem',
                 url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
                 tileSize: 512,
                 maxzoom: 14,
               })
             }
-            map.setTerrain({ source: TERRAIN_SOURCE_ID, exaggeration: TERRAIN_EXAGGERATION })
-            map.setFog({ color: '#17252c', 'high-color': '#273d45', 'horizon-blend': 0.08, 'space-color': '#05090c', 'star-intensity': 0.08 })
-            addOperationalLayers(map, stationFeatures, corridor)
+            if (offline && !map.getSource(TERRAIN_HILLSHADE_SOURCE_ID)) {
+              map.addSource(TERRAIN_HILLSHADE_SOURCE_ID, createOfflineTerrainSource(offlineManifest))
+            }
+            if (offline && !map.getLayer(TERRAIN_HILLSHADE_LAYER_ID)) {
+              map.addLayer({
+                id: TERRAIN_HILLSHADE_LAYER_ID,
+                type: 'hillshade',
+                source: TERRAIN_HILLSHADE_SOURCE_ID,
+                paint: {
+                  'hillshade-exaggeration': 0.3,
+                  'hillshade-illumination-direction': 315,
+                  'hillshade-illumination-anchor': 'map',
+                  'hillshade-shadow-color': '#071017',
+                  'hillshade-highlight-color': '#6f8990',
+                  'hillshade-accent-color': '#29454d',
+                },
+              })
+            }
+            if (map.getSource(TERRAIN_SOURCE_ID)) {
+              setTerrainError('')
+              map.setTerrain({ source: TERRAIN_SOURCE_ID, exaggeration: TERRAIN_EXAGGERATION })
+            }
+            if (offline) {
+              map.setSky?.(OFFLINE_ATMOSPHERE)
+            } else {
+              map.setFog?.({
+                range: [0.8, 7.5],
+                color: '#53676b',
+                'high-color': '#172b34',
+                'horizon-blend': 0.24,
+                'space-color': '#05090c',
+                'star-intensity': 0.04,
+              })
+            }
+            const { stationFeatures: latestStations, corridor: latestCorridor } = operationalDataRef.current
+            addOperationalLayers(map, latestStations, latestCorridor, { offline })
             applyWeather(map, true)
-          } catch {
-            fail('地图地形图层加载失败，已切换降级视图')
+          } catch (error) {
+            if (import.meta.env.DEV) {
+              window.__OPS_MAP_ERROR_DETAIL__ = error?.stack || error?.message || String(error)
+              console.error('[DigitalTwin] style setup failed', error)
+            }
+            fail(offline ? '离线地图资源加载失败' : '地图地形图层加载失败，已切换降级视图')
           }
         })
-        map.on('move', syncMarkers)
+        map.on('move', handleMapMove)
         map.on('moveend', publishCameraSnapshot)
-        map.on('resize', syncMarkers)
+        map.on('resize', handleMapMove)
+        map.on('sourcedata', markOfflineSourceReady)
         map.on('load', () => {
-          if (disposed) return
-          loaded = true
-          window.clearTimeout(loadTimeout)
-          setMapReady(true)
-          setMapError('')
-          syncMarkers()
-          publishCameraSnapshot()
+          if (!offline) markMapReady()
         })
         map.on('error', (event) => {
           const message = event?.error?.message || ''
-          if (!loaded && /401|403|access token|style/i.test(message)) fail('Mapbox 鉴权或地图样式加载失败')
+          if (offline && event?.sourceId === TERRAIN_HILLSHADE_SOURCE_ID) {
+            try {
+              if (map.getLayer(TERRAIN_HILLSHADE_LAYER_ID)) {
+                map.setLayoutProperty(TERRAIN_HILLSHADE_LAYER_ID, 'visibility', 'none')
+              }
+            } catch {
+              // The 3D terrain remains usable without the optional relief shading.
+            }
+            return
+          }
+          const terrainFailure = offline && (
+            event?.sourceId === TERRAIN_SOURCE_ID
+            || /yalongjiang-terrain|ops-terrain-dem|raster.?dem/i.test(message)
+          )
+          if (terrainFailure) {
+            setTerrainError('离线高程地形加载失败')
+            try {
+              map.setTerrain(null)
+              if (map.getLayer(TERRAIN_HILLSHADE_LAYER_ID)) {
+                map.setLayoutProperty(TERRAIN_HILLSHADE_LAYER_ID, 'visibility', 'none')
+              }
+            } catch {
+              // Keep the vector basemap available even if its optional DEM cannot render.
+            }
+            return
+          }
+          if (import.meta.env.DEV && !loaded) {
+            window.__OPS_MAP_ERROR_DETAIL__ = message || String(event?.error || event)
+          }
+          if (!loaded && (offline
+            ? /pmtiles|range|byte serving|404|style|source|tile|fetch/i.test(message)
+            : /401|403|access token|style/i.test(message))) {
+            fail(offline ? '离线地图包读取失败' : 'Mapbox 鉴权或地图样式加载失败')
+          }
         })
         loadTimeout = window.setTimeout(() => {
-          if (!loaded) fail('3D 地图加载超时')
+          if (!loaded) fail(offline ? '离线地图加载超时' : '3D 地图加载超时')
         }, 18000)
-      } catch {
-        fail('3D 地图初始化失败')
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          window.__OPS_MAP_ERROR_DETAIL__ = error?.stack || error?.message || String(error)
+          console.error('[DigitalTwin] map initialization failed', error)
+        }
+        fail(offline ? '离线地图初始化失败' : '3D 地图初始化失败')
       }
     }
 
@@ -404,15 +679,28 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
       disposed = true
       window.clearTimeout(loadTimeout)
       if (map) {
-        map.off('move', syncMarkers)
+        map.off('move', handleMapMove)
         map.off('moveend', publishCameraSnapshot)
-        map.off('resize', syncMarkers)
+        map.off('resize', handleMapMove)
+        map.off('sourcedata', markOfflineSourceReady)
         if (contextLostHandler) map.getCanvas().removeEventListener('webglcontextlost', contextLostHandler)
         map.remove()
       }
+      if (pmtilesProtocol) releaseOfflineProtocol(pmtilesProtocol)
+      if (import.meta.env.DEV) delete window.__OPS_PMTILES_PROTOCOL__
+      if (import.meta.env.DEV) delete window.__OPS_MAP_DEBUG__
+      if (import.meta.env.DEV) delete window.__OPS_MAP_ERROR_DETAIL__
       if (mapRef.current === map) mapRef.current = null
     }
-  }, [corridor, stationFeatures, syncMarkers])
+  }, [])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!mapReady || !map) return
+    map.getSource('ops-stations')?.setData?.(stationFeatures)
+    map.getSource('ops-corridor')?.setData?.(corridor)
+    syncMarkers()
+  }, [corridor, mapReady, stationFeatures, syncMarkers])
 
   useEffect(() => {
     const map = mapRef.current
@@ -420,16 +708,18 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
     try {
       map.setConfigProperty?.('basemap', 'lightPreset', lightPreset)
       const isDark = lightPreset === 'night' || lightPreset === 'dusk'
-      map.setFog(isDark ? {
-        color: '#17252c',
-        'high-color': '#273d45',
-        'horizon-blend': 0.08,
+      map.setFog?.(isDark ? {
+        range: [0.8, 7.5],
+        color: '#53676b',
+        'high-color': '#172b34',
+        'horizon-blend': 0.24,
         'space-color': '#05090c',
-        'star-intensity': lightPreset === 'night' ? 0.08 : 0.02,
+        'star-intensity': lightPreset === 'night' ? 0.04 : 0.02,
       } : {
+        range: [0.6, 8.5],
         color: '#b8c8cc',
         'high-color': '#dce7e8',
-        'horizon-blend': 0.12,
+        'horizon-blend': 0.18,
         'space-color': '#81959b',
         'star-intensity': 0,
       })
@@ -446,9 +736,11 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
 
   useEffect(() => {
     const map = mapRef.current
-    if (!mapReady || !map || !map.getSource(TERRAIN_SOURCE_ID)) return
+    if (!mapReady || !map) return
     try {
-      map.setTerrain(!flat && terrainEnabled ? { source: TERRAIN_SOURCE_ID, exaggeration: TERRAIN_EXAGGERATION } : null)
+      if (map.getSource(TERRAIN_SOURCE_ID)) {
+        map.setTerrain(!flat && terrainEnabled ? { source: TERRAIN_SOURCE_ID, exaggeration: TERRAIN_EXAGGERATION } : null)
+      }
       map.easeTo({ pitch: flat ? 0 : DEFAULT_CAMERA.pitch, bearing: flat ? 0 : DEFAULT_CAMERA.bearing, duration: 720, essential: true })
     } catch {
       // A terrain toggle failure should not blank an otherwise usable map.
@@ -459,6 +751,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
     const map = mapRef.current
     if (!mapReady || !map) return
     const visibility = terrainEnabled ? 'visible' : 'none'
+    if (map.getLayer(TERRAIN_HILLSHADE_LAYER_ID)) map.setLayoutProperty(TERRAIN_HILLSHADE_LAYER_ID, 'visibility', visibility)
     if (map.getLayer('ops-corridor-glow')) map.setLayoutProperty('ops-corridor-glow', 'visibility', visibility)
     if (map.getLayer('ops-corridor-line')) map.setLayoutProperty('ops-corridor-line', 'visibility', visibility)
   }, [mapReady, terrainEnabled])
@@ -504,16 +797,22 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
   }
 
   if (!selected) return null
+  const offlineMap = mapSource === 'offline'
+  const mapSourceLabel = mapError
+    ? '降级视图'
+    : offlineMap
+      ? mapReady ? terrainError ? '离线地图' : '离线 3D' : '载入离线地图'
+      : mapReady ? '在线地形' : '载入地图'
 
   return (
     <section ref={panelRef} className="digital-twin" aria-label="雅砻江流域电站数字孪生">
       <header className="scene-toolbar">
         <div>
-          <span className="section-kicker">BASIN DIGITAL TWIN · MAPBOX 3D</span>
+          <span className="section-kicker">BASIN DIGITAL TWIN · OFFLINE READY</span>
           <h2>数字孪生 <b>· 雅砻江</b></h2>
         </div>
         <div className="scene-summary">
-          <span><i className="legend-dot normal" />{mapError ? '降级视图' : mapReady ? '真实地形' : '载入地形'}</span>
+          <span className={`map-source-status is-${mapSource}`}><i className="legend-dot normal" />{mapSourceLabel}</span>
           <span><i className="legend-dot warning" />在办缺陷 3</span>
         </div>
         <div className="scene-tools">
@@ -534,16 +833,19 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
           ref={mapContainerRef}
           className={`mapbox-canvas ${mapReady && !mapError ? 'is-ready' : ''}`}
           data-camera={cameraSnapshot ? JSON.stringify(cameraSnapshot) : undefined}
-          aria-label="雅砻江流域三维地形地图"
+          data-terrain={terrainError ? 'error' : !flat && terrainEnabled ? 'enabled' : 'disabled'}
+          aria-label="雅砻江流域交互地图"
         />
 
         {!mapError ? (
           <>
-            <div className="map-light-presets" aria-label="地图光照预设">
-              {LIGHT_PRESETS.map(([value, label]) => (
-                <button key={value} className={lightPreset === value ? 'is-active' : ''} type="button" onClick={() => setLightPreset(value)} disabled={!mapReady}>{label}</button>
-              ))}
-            </div>
+            {!offlineMap ? (
+              <div className="map-light-presets" aria-label="地图光照预设">
+                {LIGHT_PRESETS.map(([value, label]) => (
+                  <button key={value} className={lightPreset === value ? 'is-active' : ''} type="button" onClick={() => setLightPreset(value)} disabled={!mapReady}>{label}</button>
+                ))}
+              </div>
+            ) : null}
             <div className={`map-station-layer ${markersVisible ? '' : 'is-hidden'}`}>
               {mapStations.map((station) => (
                 <div
@@ -575,13 +877,20 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
           <div className="map-layer-menu" role="dialog" aria-label="地图图层">
             <span>显示图层</span>
             <button type="button" role="switch" aria-checked={terrainEnabled} onClick={() => setTerrainEnabled((value) => !value)}><span>三维地形与流域链路</span><i>{terrainEnabled ? <Check size={12} /> : null}</i></button>
-            <button type="button" role="switch" aria-checked={weatherEnabled} onClick={() => setWeatherEnabled((value) => !value)}><span>高海拔气象粒子</span><i>{weatherEnabled ? <Check size={12} /> : null}</i></button>
+            {!offlineMap ? <button type="button" role="switch" aria-checked={weatherEnabled} onClick={() => setWeatherEnabled((value) => !value)}><span>高海拔气象粒子</span><i>{weatherEnabled ? <Check size={12} /> : null}</i></button> : null}
             <button type="button" role="switch" aria-checked={markersVisible} onClick={() => setMarkersVisible((value) => !value)}><span>电站状态标记</span><i>{markersVisible ? <Check size={12} /> : null}</i></button>
           </div>
         ) : null}
 
-        {!mapReady && !mapError ? <div className="map-loading-state"><span /><strong>正在建立 3D 地形</strong><small>加载 Mapbox Standard 与高程数据</small></div> : null}
-        {mapError ? <div className="map-fallback-notice"><TriangleAlert size={14} /><span><strong>3D 地图暂不可用</strong><small>{mapError}，场站交互仍可使用</small></span></div> : null}
+        {!mapReady && !mapError ? (
+          <div className="map-loading-state">
+            <span />
+            <strong>{mapSource === 'online' ? '正在建立 3D 地形' : '正在建立离线 3D 地形'}</strong>
+            <small>{mapSource === 'online' ? '加载 Mapbox Standard 与高程数据' : '读取本地底图与高程包'}</small>
+          </div>
+        ) : null}
+        {terrainError && !mapError ? <div className="map-fallback-notice"><TriangleAlert size={14} /><span><strong>三维地形暂不可用</strong><small>{terrainError}，已保留离线平面地图</small></span></div> : null}
+        {mapError ? <div className="map-fallback-notice"><TriangleAlert size={14} /><span><strong>地图暂不可用</strong><small>{mapError}，场站交互仍可使用</small></span></div> : null}
         <div className="map-legend"><span><i className="normal" />正常</span><span><i className="warning" />预警</span><span><i className="urgent" />严重告警</span></div>
       </div>
     </section>

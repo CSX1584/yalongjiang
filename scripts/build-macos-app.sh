@@ -34,9 +34,45 @@ require_command shasum
 
 cd "$PROJECT_DIR"
 
+# macOS 分发包应当开箱即用。除非调用者显式指定 online/auto，
+# 默认把 Vite 的地图模式编译为 offline，避免把本机 .env.local
+# 中的在线配置意外带进自包含 App。
+export VITE_MAP_MODE="${VITE_MAP_MODE:-offline}"
+case "$VITE_MAP_MODE" in
+  auto|offline|online)
+    ;;
+  *)
+    echo "VITE_MAP_MODE 必须是 auto、offline 或 online（当前: $VITE_MAP_MODE）" >&2
+    exit 1
+    ;;
+esac
+
 echo "[1/6] 构建 Web 生产版..."
+echo "地图模式: $VITE_MAP_MODE"
+OFFLINE_MAP_INCLUDED=false
+if [ "$VITE_MAP_MODE" = "offline" ]; then
+  OFFLINE_MAP_INCLUDED=true
+elif [ "$VITE_MAP_MODE" = "auto" ] && [ -f "$PROJECT_DIR/public/offline-map/manifest.json" ]; then
+  OFFLINE_MAP_INCLUDED=true
+fi
+if [ "$OFFLINE_MAP_INCLUDED" = true ]; then
+  npm run test:offline-map
+fi
 npm run build
 find "$PROJECT_DIR/dist" -name '.DS_Store' -type f -delete
+if [ "$OFFLINE_MAP_INCLUDED" = true ]; then
+  for OFFLINE_FILE in manifest.json style.json yalongjiang.pmtiles yalongjiang-terrain.pmtiles; do
+    if [ ! -s "$PROJECT_DIR/dist/offline-map/$OFFLINE_FILE" ]; then
+      echo "离线地图构建产物缺失: dist/offline-map/$OFFLINE_FILE" >&2
+      exit 1
+    fi
+  done
+  MAPLIBRE_WORKER_FILE="$(find "$PROJECT_DIR/dist/assets" -name 'maplibre-gl-worker-*.js' -type f -size +0c -print -quit)"
+  if [ -z "$MAPLIBRE_WORKER_FILE" ]; then
+    echo "离线地图 Worker 未写入 dist/assets" >&2
+    exit 1
+  fi
+fi
 
 echo "[2/6] 编译 Intel + Apple Silicon 通用启动器..."
 SDK_PATH="$(xcrun --sdk macosx --show-sdk-path)"
@@ -117,7 +153,16 @@ cat > "$PACKAGE_DIR/使用说明.txt" <<'README'
 系统要求：
 - macOS 11 Big Sur 或更高版本
 - 同时支持 Intel 和 Apple 芯片 Mac
-- 大部分界面可离线使用；三维地图底图需要联网加载
+
+地图模式：
+- 本分发脚本默认以 VITE_MAP_MODE=offline 构建，地图不需要网络或 Mapbox Token。
+- 离线地图包含矢量底图、真实高程地形和业务站点/走廊图层，支持拖动、缩放、旋转和 3D/平面切换。
+- 3D 视角包含本地渲染的大气与远山雾；切到平面视角时雾气会自动淡出。
+- 离线地图覆盖经度 100.0–102.1、纬度 27.0–30.6；底图原生数据最大级别为 12，高程数据最大级别为 8，
+  界面可过缩放到 15，但不会增加新的地图或地形细节。
+- 当前离线样式不包含在线 Mapbox 的完整文字、图标精灵和 3D 建筑/模型；
+  需要这些在线资源时，请在构建前显式设置 VITE_MAP_MODE=online，并提供 Mapbox Token。
+- 也可以设置 VITE_MAP_MODE=auto：有离线地图包时优先离线，否则尝试在线地图。
 
 启动方法：
 1. 先完整解压 ZIP 压缩包。

@@ -1134,6 +1134,18 @@ input::placeholder {
   gap: 7px;
 }
 
+.map-source-status.is-offline {
+  color: #b7f3c8;
+}
+
+.map-source-status.is-online {
+  color: var(--ops-text-secondary);
+}
+
+.map-source-status.is-fallback {
+  color: var(--ops-warning);
+}
+
 .legend-dot {
   width: 6px;
   height: 6px;
@@ -1407,37 +1419,45 @@ input::placeholder {
   pointer-events: auto;
 }
 
-.mapbox-canvas .mapboxgl-canvas {
+.mapbox-canvas .mapboxgl-canvas,
+.mapbox-canvas .maplibregl-canvas {
   outline: none;
 }
 
 .mapbox-canvas.mapboxgl-map,
-.mapbox-canvas .mapboxgl-ctrl {
+.mapbox-canvas.maplibregl-map,
+.mapbox-canvas .mapboxgl-ctrl,
+.mapbox-canvas .maplibregl-ctrl {
   font-family: var(--ops-font-ui);
 }
 
-.mapbox-canvas .mapboxgl-ctrl-bottom-left {
+.mapbox-canvas .mapboxgl-ctrl-bottom-left,
+.mapbox-canvas .maplibregl-ctrl-bottom-left {
   left: 14px;
   bottom: 10px;
 }
 
-.mapbox-canvas .mapboxgl-ctrl-bottom-right {
+.mapbox-canvas .mapboxgl-ctrl-bottom-right,
+.mapbox-canvas .maplibregl-ctrl-bottom-right {
   right: 14px;
   bottom: 10px;
 }
 
-.mapbox-canvas .mapboxgl-ctrl-scale {
+.mapbox-canvas .mapboxgl-ctrl-scale,
+.mapbox-canvas .maplibregl-ctrl-scale {
   border-color: rgba(219, 235, 243, 0.54);
   color: rgba(219, 235, 243, 0.72);
   background: rgba(8, 13, 16, 0.58);
 }
 
-.mapbox-canvas .mapboxgl-ctrl-attrib {
+.mapbox-canvas .mapboxgl-ctrl-attrib,
+.mapbox-canvas .maplibregl-ctrl-attrib {
   color: rgba(219, 235, 243, 0.66);
   background: rgba(8, 13, 16, 0.74);
 }
 
-.mapbox-canvas .mapboxgl-ctrl-attrib a {
+.mapbox-canvas .mapboxgl-ctrl-attrib a,
+.mapbox-canvas .maplibregl-ctrl-attrib a {
   color: rgba(219, 235, 243, 0.76);
 }
 
