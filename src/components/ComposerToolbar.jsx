@@ -10,7 +10,8 @@ export const DEFECT_INFO_SAMPLE = '#3 方阵 7 号组串光伏组件出现热斑
 const MODEL_OPTIONS = ['deepseek v4', 'deepseek v3']
 
 // 输入框内常驻模式按钮的上拉选项：缺陷单/报告分析走现有指令流程，其余仅切换模式胶囊
-const COMPOSER_MODES = [
+// GUI 模式的「+」菜单复用同一份选项定义
+export const COMPOSER_MODES = [
   { key: 'general', menu: '通用事项', label: '通用事项' },
   { key: 'defect', menu: '缺陷单', label: '新建缺陷单' },
   { key: 'report', menu: '报告分析', label: '巡检报告' },

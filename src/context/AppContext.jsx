@@ -35,6 +35,8 @@ const STORAGE_VERSION = 14
 const DEFAULT_ROLE = 'technical'
 // 主题偏好独立持久化，不随「重置演示数据」清除
 const THEME_KEY = 'yalong-ops-ui:theme'
+// 界面模式偏好：lui 对话式 / gui 卡片式，独立持久化，不随「重置演示数据」清除
+const UI_MODE_KEY = 'yalong-ops-ui:ui-mode'
 
 // 对话窗指令：作为首条消息时不参与会话自动改名
 const CHAT_COMMAND_CAPSULES = ['新建缺陷单', '巡检报告分析', '开始巡检']
@@ -377,6 +379,10 @@ export function AppProvider({ children }) {
   const [theme, setTheme] = useState(() =>
     typeof window !== 'undefined' && window.localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark',
   )
+  // 界面模式：lui 对话式 / gui 卡片式（仅影响工作台 Smart Assistant 面板）
+  const [uiMode, setUiMode] = useState(() =>
+    typeof window !== 'undefined' && window.localStorage.getItem(UI_MODE_KEY) === 'gui' ? 'gui' : 'lui',
+  )
   // 对话窗口收起状态：全局共享，跨页面保持
   const [qaCollapsed, setQaCollapsed] = useState(false)
   // 版本2：任务中心右侧对话窗口（dock）的会话状态
@@ -438,6 +444,11 @@ export function AppProvider({ children }) {
     document.documentElement.dataset.theme = theme
     window.localStorage.setItem(THEME_KEY, theme)
   }, [theme])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(UI_MODE_KEY, uiMode)
+  }, [uiMode])
 
   useEffect(
     () => () => {
@@ -1681,6 +1692,8 @@ export function AppProvider({ children }) {
       setRole,
       theme,
       setTheme,
+      uiMode,
+      setUiMode,
       flowVariant,
       setFlowVariant,
       flowVariants,
@@ -1831,6 +1844,7 @@ export function AppProvider({ children }) {
       theme,
       tickets,
       toast,
+      uiMode,
       toggleReportChecked,
       updateChatMessages,
       updateTicket,

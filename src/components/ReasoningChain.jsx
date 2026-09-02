@@ -102,6 +102,7 @@ export default function ReasoningChain({
   completed,
   onSelect,
   focusNode,
+  initialOpen = false,
 }) {
   const canvasRef = useRef(null)
   const colRefs = useRef(new Map())
@@ -110,7 +111,7 @@ export default function ReasoningChain({
   const [hoverId, setHoverId] = useState('')
   const [flashId, setFlashId] = useState('')
   // 整条推理链默认收起，点击顶栏展开
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(initialOpen)
 
   // 推进步骤后把当前列滚进可视区（收起态不滚动）
   useLayoutEffect(() => {

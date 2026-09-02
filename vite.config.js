@@ -77,7 +77,8 @@ function solarPlantMonitorAssets() {
 }
 
 export default defineConfig({
-  // Relative asset URLs work with static hosting and the local launcher.
+  // Relative asset URLs allow the production build to run inside the
+  // self-contained macOS WebKit launcher as well as behind any web server.
   base: './',
   plugins: [solarPlantMonitorAssets(), react()],
   optimizeDeps: {

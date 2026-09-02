@@ -14,15 +14,16 @@ import {
   ArrowCounterClockwise as RotateCcw,
   FlowArrow,
   Gear as Settings,
-  User as UserRound,
   X,
 } from '@phosphor-icons/react'
 import { useApp } from '../context/AppContext'
-import { cockpitKpis, flowVariants, inspectionFlow, OPS_DEMO_TICKET_ID, resolveStepRole, roles, stations } from '../data/demoData'
+import { cockpitKpis, flowVariants, OPS_DEMO_TICKET_ID, resolveStepRole, roles, stations } from '../data/demoData'
 import ChatDock, { SUGGESTION_PRESETS, useChatCommands } from './ChatDock'
 import { DefectActionCard, KpiCardGrid } from './AgentChatPanel'
 import ComposerToolbar from './ComposerToolbar'
 import CockpitPage from '../pages/CockpitPage'
+import { flowOf, severityKeyOf, TaskCard, ticketPath } from './taskCardUtils'
+import { GuiAssistantPanel, GuiTabsBar } from './GuiAssistantPanel'
 
 const roleList = Array.isArray(roles) ? roles : Object.values(roles || {})
 
@@ -53,28 +54,9 @@ const PRODUCTION_MENU = [
 // 智能巡检下拉子菜单
 const INSPECTION_MENU = [{ label: '巡检报告', path: '/inspection' }]
 
-// 巡检任务走独立 4 步流程，其余任务走缺陷单流程
-function flowOf(ticket, defectFlow) {
-  return ticket?.flowType === 'inspection' ? inspectionFlow : defectFlow
-}
-
 // 工单是否已流转到关单节点（会话联动缺陷单只在该节点进入待办）
 function atCloseStep(ticket, defectFlow) {
   return flowOf(ticket, defectFlow)[Number(ticket?.currentStep ?? 1) - 1]?.id === 'close'
-}
-
-// 巡检任务详情页路由
-function ticketPath(ticket) {
-  return ticket?.flowType === 'inspection' ? `/inspection-task/${ticket.id}` : `/ticket/${ticket.id}`
-}
-
-// 严重度归一化：紧急/预警/关注三档
-function severityKeyOf(ticket) {
-  return ['urgent', 'critical', '严重'].includes(ticket?.severity)
-    ? 'urgent'
-    : ['warning', '高', '中'].includes(ticket?.severity)
-      ? 'warning'
-      : 'info'
 }
 
 // 取任务当前节点归属的展示角色（与审批权限共用 resolveStepRole 同一数据源）
@@ -88,6 +70,8 @@ function TopBar({ onOpenSidebar }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // 设置面板分页：general 通用 / interface 界面
+  const [settingsTab, setSettingsTab] = useState('general')
   const {
     role,
     setRole,
@@ -97,6 +81,8 @@ function TopBar({ onOpenSidebar }) {
     showToast,
     theme,
     setTheme,
+    uiMode,
+    setUiMode,
     closeChat,
     stopKolaDemo,
   } = useApp()
@@ -263,6 +249,24 @@ function TopBar({ onOpenSidebar }) {
             <div><span className="eyebrow">WORKSPACE</span><h2>演示控制</h2></div>
             <button className="icon-button" type="button" title="关闭" onClick={() => setSettingsOpen(false)}><X size={16} /></button>
           </div>
+          <div className="segmented-control wide settings-panel__tabs">
+            <button
+              className={settingsTab === 'general' ? 'is-selected' : ''}
+              type="button"
+              onClick={() => setSettingsTab('general')}
+            >
+              通用
+            </button>
+            <button
+              className={settingsTab === 'interface' ? 'is-selected' : ''}
+              type="button"
+              onClick={() => setSettingsTab('interface')}
+            >
+              界面
+            </button>
+          </div>
+          {settingsTab === 'general' ? (
+            <>
           <section className="settings-section">
             <span className="settings-label">当前角色</span>
             <div className="role-options">
@@ -324,34 +328,38 @@ function TopBar({ onOpenSidebar }) {
             </div>
           </section>
           <button className="reset-button" type="button" onClick={handleReset}><RotateCcw size={15} />重置演示数据</button>
+            </>
+          ) : (
+          <section className="settings-section">
+            <span className="settings-label">界面模式</span>
+            <div className="segmented-control wide">
+              <button
+                className={uiMode === 'lui' ? 'is-selected' : ''}
+                type="button"
+                onClick={() => {
+                  setUiMode('lui')
+                  showToast?.('已切换至 LUI 对话式界面')
+                }}
+              >
+                LUI · 对话式
+              </button>
+              <button
+                className={uiMode === 'gui' ? 'is-selected' : ''}
+                type="button"
+                onClick={() => {
+                  setUiMode('gui')
+                  showToast?.('已切换至 GUI 卡片式界面')
+                }}
+              >
+                GUI · 卡片式
+              </button>
+            </div>
+            <span className="settings-label settings-hint">GUI 模式仅影响工作台 Smart Assistant 面板，模块页保持对话式</span>
+          </section>
+          )}
         </div>
       ) : null}
     </header>
-  )
-}
-
-function TaskCard({ ticket, active, onClick }) {
-  const { flowSteps } = useApp()
-  const station = stations.find((item) => item.id === ticket.stationId)
-  const currentStep = flowOf(ticket, flowSteps)[Number(ticket.currentStep) - 1]
-  const severityKey = severityKeyOf(ticket)
-  const statusKey = String(ticket.status).includes('完成')
-    ? 'completed'
-    : String(ticket.status).includes('挂起')
-      ? 'suspended'
-      : 'running'
-  const severityLabel = severityKey === 'urgent' ? '紧急' : severityKey === 'warning' ? '预警' : '关注'
-
-  return (
-    <button className={`task-card ${active ? 'is-active' : ''}`} type="button" onClick={onClick}>
-      <div className="task-card-title">
-        <span className={`severity-dot severity-${severityKey}`} aria-hidden="true" />
-        <strong>{ticket.title}</strong>
-        <span className={`status-text status-${statusKey}`}>{ticket.statusLabel || ticket.status || '待审批'}</span>
-      </div>
-      <div className="task-card-meta"><span>{currentStep?.name || ticket.stepLabel || '异常复核'}</span><span>{station?.shortName || ticket.station || '雅砻江流域'}</span></div>
-      <div className="task-card-owner"><UserRound size={14} /><span>{ticket.assignee || '技术负责人'}</span><time>{ticket.updatedAt || '08:24'}</time><span className="sr-only">{severityLabel}</span></div>
-    </button>
   )
 }
 
@@ -628,9 +636,12 @@ function Sidebar({ collapsed, onCollapse, onExpand }) {
     inspectionThreadId,
     inspectionStage,
     setInspectionStage,
+    uiMode,
   } = useApp()
   // 面板内容：assistant = Smart Assistant（主控agent气泡 + 待办卡片），history = 历史对话列表
   const [v2View, setV2View] = useState('assistant')
+  // GUI 模式面板分页：todo 待办 / done 已处理
+  const [guiTab, setGuiTab] = useState('todo')
   // 任务中心卡片默认隐藏，按数字键 1 揭示
   const [tasksRevealed, setTasksRevealed] = useState(false)
 
@@ -778,10 +789,25 @@ function Sidebar({ collapsed, onCollapse, onExpand }) {
               <span className="ticket-qa__brand" role="img" aria-label="Smart Assistant" />
               <button className="icon-button sidebar-collapse" type="button" onClick={onCollapse} title="收起面板"><ChevronLeft size={17} /></button>
             </div>
-            <div className={`task-list ${v2View === 'assistant' ? 'task-list--assistant' : ''}`}>
+            {uiMode === 'gui' && v2View === 'assistant' && !moduleView ? (
+              <GuiTabsBar activeTab={guiTab} onTabChange={setGuiTab} />
+            ) : null}
+            <div className={`task-list ${v2View === 'assistant' ? 'task-list--assistant' : ''} ${uiMode === 'gui' && v2View === 'assistant' && !moduleView ? 'task-list--gui' : ''}`}>
               {v2View === 'assistant' ? (
                 moduleView ? (
                   <ModuleAssistant pathname={location.pathname} onOpenTicket={openTicket} />
+                ) : uiMode === 'gui' ? (
+                  <GuiAssistantPanel
+                    activeTab={guiTab}
+                    todoTickets={noticeTickets}
+                    doneThreads={chatOnlyThreads}
+                    doneTickets={historyTickets}
+                    pathname={location.pathname}
+                    activeChatId={activeChatId}
+                    chatDockOpen={chatDockOpen}
+                    onOpenTicket={openTicket}
+                    onOpenThread={openThread}
+                  />
                 ) : (
                 <>
                   {/* 主控agent 提示气泡：三张默认缺陷单卡片直接放进气泡 */}
@@ -861,7 +887,7 @@ function Sidebar({ collapsed, onCollapse, onExpand }) {
             </div>
         </>
 
-        {v2View === 'assistant' ? <SidebarComposer /> : null}
+        {v2View === 'assistant' && !(uiMode === 'gui' && !moduleView) ? <SidebarComposer /> : null}
       </aside>
   )
 

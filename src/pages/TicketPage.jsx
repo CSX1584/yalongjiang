@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
   CheckCircle as CheckCircle2,
+  GitBranch,
   WarningCircle as CircleAlert,
   X,
 } from '@phosphor-icons/react'
@@ -121,10 +122,11 @@ function ticketStatusMeta(status) {
   return STATUS_META.in_progress
 }
 
-// 反灌单走顶部推理链布局：标题栏与节点范围行由思维链替代
+// 合并流程三票（热斑/反灌/脱网）走页签布局：左侧步骤页签 + 右侧推理链入口
 function isRefluxTicket(ticket) {
   const key = `${ticket?.id ?? ''} ${ticket?.title ?? ''}`
-  return key.includes('DF-20260820-002') || key.includes('反灌')
+  return ['DF-20260820-001', 'DF-20260820-002', 'DF-20260820-003'].some((id) => key.includes(id))
+    || key.includes('反灌') || key.includes('热斑') || key.includes('脱网')
 }
 
 function severityTone(severity) {
@@ -157,6 +159,40 @@ export default function TicketPage() {
 
   const status = ticketStatusMeta(ticket?.status)
   const completed = Boolean(ticket?.completed) || ['completed', 'complete', '已完成'].includes(String(ticket?.status ?? ''))
+  // 合并流程三票走页签布局：左侧步骤页签 + 内容区 + 右侧推理链入口
+  const reasoningMode = isRefluxTicket(ticket)
+
+  // 页签状态：openTabs 已打开页签（步骤号升序）、activeTab 当前页签、tabLoading 切换时先播骨架动画
+  const [openTabs, setOpenTabs] = useState([])
+  const [activeTab, setActiveTab] = useState(null)
+  const [tabLoading, setTabLoading] = useState(false)
+  const [chainOpen, setChainOpen] = useState(false)
+  const tabTimerRef = useRef(0)
+  // 已播过骨架动画的页签：同一会话内每个步骤只在第一次进入时播
+  const loadedTabsRef = useRef(new Set())
+
+  /** 页签内容区先播三卡骨架动画再出内容，每个页签仅首次进入时播 */
+  const playTabLoading = useCallback((index) => {
+    if (loadedTabsRef.current.has(index)) return
+    loadedTabsRef.current.add(index)
+    setTabLoading(true)
+    window.clearTimeout(tabTimerRef.current)
+    tabTimerRef.current = window.setTimeout(() => setTabLoading(false), 900)
+  }, [])
+
+  /** 打开（若未打开）并激活页签 */
+  const activateTab = useCallback((index) => {
+    setOpenTabs((tabs) => (tabs.includes(index) ? tabs : [...tabs, index].sort((a, b) => a - b)))
+    setActiveTab(index)
+    playTabLoading(index)
+  }, [playTabLoading])
+
+  /** 关闭页签只是关闭内容；关的是当前页签则激活剩余最后一个 */
+  const closeTab = (index) => {
+    const next = openTabs.filter((tab) => tab !== index)
+    setOpenTabs(next)
+    if (activeTab === index) setActiveTab(next[next.length - 1] ?? null)
+  }
 
   const runAction = useCallback(async (action) => {
     if (!ticket || busy) return
@@ -196,12 +232,37 @@ export default function TicketPage() {
     cardRefs.current.get(index)?.scrollIntoView({ behavior, block: 'start' })
   }, [])
 
-  // 步骤栏/思维链选择：记录选中态并把对应卡片滚进可视区
+  // 步骤栏/思维链选择：记录选中态；页签布局下打开对应页签，瀑布流布局下滚动定位
   const handleSelectStep = useCallback((index, _step, branch = '') => {
     setSelectedStep(index)
     setSelectedBranch(branch)
-    scrollToStep(index)
-  }, [scrollToStep])
+    if (reasoningMode) activateTab(index)
+    else scrollToStep(index)
+  }, [activateTab, reasoningMode, scrollToStep])
+
+  // 页签初始化与推进联动：换工单重置为全部已解锁页签并激活缺陷单步骤；同单推进时新步骤自动增加页签并激活
+  const tabInitRef = useRef('')
+  useEffect(() => {
+    if (!reasoningMode || !ticket) return
+    const key = `${activeId}:${currentStep}:${completed}`
+    if (tabInitRef.current === key) return
+    const prevId = tabInitRef.current.split(':')[0]
+    tabInitRef.current = key
+    const unlocked = steps.filter((s) => completed || s.index <= currentStep).map((s) => s.index)
+    if (prevId !== activeId) {
+      loadedTabsRef.current = new Set()
+      setOpenTabs(unlocked)
+      setActiveTab(defectStepIndex)
+      playTabLoading(defectStepIndex)
+    } else {
+      setOpenTabs((tabs) => Array.from(new Set([...tabs, ...unlocked])).sort((a, b) => a - b))
+      setActiveTab(currentStep)
+      playTabLoading(currentStep)
+    }
+  }, [activeId, completed, currentStep, defectStepIndex, playTabLoading, reasoningMode, steps, ticket])
+
+  // 卸载时清理骨架动画定时器
+  useEffect(() => () => window.clearTimeout(tabTimerRef.current), [])
 
   // 对话胶囊点击：选中节点所属步骤，下方展开该步骤详情（节点高亮由 ReasoningChain 处理）
   useEffect(() => {
@@ -268,9 +329,6 @@ export default function TicketPage() {
 
   const evidence = useMemo(() => collectEvidence(ticket, history), [history, ticket])
 
-  // 反灌单走顶部推理链布局：标题栏与节点范围行由思维链替代
-  const reasoningMode = isRefluxTicket(ticket)
-
   if (!ticket) {
     return (
       <div className="ticket-page ticket-page--empty">
@@ -313,17 +371,91 @@ export default function TicketPage() {
         </header>
       )}
 
-      {reasoningMode && (
-        <ReasoningChain
-          completed={completed}
-          currentStep={currentStep}
-          focusNode={reasoningFocus}
-          onSelect={handleSelectStep}
-          selectedStep={selectedStep}
-          steps={steps}
-        />
-      )}
+      {reasoningMode ? (
+        <div className="ticket-page__workspace ticket-page__workspace--tabs">
+          {/* 顶部页签行：页签从左到右排列（新页签向右追加），右侧 AI 推理链入口 */}
+          <div className="ticket-tabs-bar">
+            <nav className="ticket-tabs" aria-label="流程步骤页签">
+              {openTabs.map((tabIndex) => {
+                const stepInfo = steps.find((item) => item.index === tabIndex)
+                if (!stepInfo) return null
+                const active = activeTab === stepInfo.index
+                return (
+                  <div
+                    className={`ticket-tabs__tab${active ? ' is-active' : ''}`}
+                    key={stepInfo.id ?? stepInfo.index}
+                  >
+                    <button
+                      type="button"
+                      className="ticket-tabs__tab-main"
+                      onClick={() => handleSelectStep(stepInfo.index, stepInfo)}
+                    >
+                      <span className="ticket-tabs__tab-name">{stepInfo.shortLabel ?? stepInfo.name}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="ticket-tabs__tab-close"
+                      onClick={() => closeTab(stepInfo.index)}
+                      aria-label={`关闭${stepInfo.shortLabel ?? stepInfo.name}页签`}
+                      title="关闭页签"
+                    >
+                      <X size={11} />
+                    </button>
+                  </div>
+                )
+              })}
+            </nav>
+            <button
+              type="button"
+              className={`ticket-tabs-bar__chain${chainOpen ? ' is-active' : ''}`}
+              onClick={() => setChainOpen((value) => !value)}
+              aria-expanded={chainOpen}
+              title="AI 推理链"
+            >
+              <GitBranch size={14} aria-hidden="true" />
+              <span>AI 推理链</span>
+            </button>
+          </div>
 
+          {/* 推理链展开：点击入口后在页签行下方向下展开横向思维导图 */}
+          {chainOpen && (
+            <div className="ticket-chain-panel">
+              <ReasoningChain
+                completed={completed}
+                currentStep={currentStep}
+                focusNode={reasoningFocus}
+                initialOpen
+                onSelect={handleSelectStep}
+                selectedStep={selectedStep}
+                steps={steps}
+              />
+            </div>
+          )}
+
+          {/* 内容区：切换/打开页签先播三卡骨架动画，再渲染对应步骤卡片 */}
+          <section className="ticket-tab-panel" aria-label="步骤内容">
+            {activeTab == null || !openTabs.includes(activeTab) ? (
+              <div className="ticket-tab-panel__empty">
+                从顶部页签选择步骤，或在左侧对话中点击「查看步骤」重新打开
+              </div>
+            ) : tabLoading ? (
+              <div className="ticket-thread__skeleton" aria-hidden="true">
+                <span /><span /><span />
+              </div>
+            ) : (
+              <div className="ticket-thread__card" data-step={activeTab}>
+                <TicketStageContent
+                  step={steps.find((stepInfo) => stepInfo.index === activeTab)}
+                  ticket={ticket}
+                  currentStep={currentStep}
+                  completed={completed}
+                  branchRole={activeTab === selectedStep ? selectedBranch : ''}
+                />
+              </div>
+            )}
+          </section>
+        </div>
+      ) : (
       <div className="ticket-page__workspace">
         <section className="ticket-thread" aria-label="任务对话与证据流">
           {/* 瀑布流：已解锁步骤卡片依次叠放，新步骤追加在下方，审批面板跟随当前步骤卡片；首进编排期间卡片逐块生成。
@@ -360,6 +492,7 @@ export default function TicketPage() {
 
         </section>
       </div>
+      )}
 
       {/* 步骤栏与时间轴固定在页面底部；版本3 不渲染 */}
       {!flowVariants[flowVariant]?.hideTaskFlow && (

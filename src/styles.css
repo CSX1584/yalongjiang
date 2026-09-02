@@ -11644,6 +11644,949 @@ button {
   to { opacity: 1; transform: translateY(0); }
 }
 
+.ticket-page--reasoning .ticket-thread {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+/* ============ 页签布局：顶部页签行（左页签 + 右推理链入口）+ 内容区（合并流程三票） ============ */
+.ticket-page__workspace--tabs {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+/* 顶部页签行 */
+.ticket-tabs-bar {
+  grid-row: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 6px 12px 0;
+  border-bottom: 1px solid var(--ops-border);
+  background: var(--ops-surface-main);
+}
+
+.ticket-tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+/* 页签：浏览器标签式，从左到右排列 */
+.ticket-tabs__tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+}
+
+.ticket-tabs__tab-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 8px 7px 12px;
+  border: none;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: var(--ops-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ticket-tabs__tab:hover {
+  background: var(--ops-surface-inner);
+}
+
+.ticket-tabs__tab.is-active {
+  border-color: var(--ops-border-soft);
+  background: var(--ops-surface-inner);
+}
+
+.ticket-tabs__tab.is-active .ticket-tabs__tab-main {
+  color: var(--ops-text-primary);
+  font-weight: 600;
+}
+
+.ticket-tabs__tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ticket-tabs__tab-close {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ops-text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.ticket-tabs__tab:hover .ticket-tabs__tab-close,
+.ticket-tabs__tab.is-active .ticket-tabs__tab-close {
+  opacity: 1;
+}
+
+.ticket-tabs__tab-close:hover {
+  background: var(--ops-border-soft);
+  color: var(--ops-text-primary);
+}
+
+/* 页签行右侧：AI 推理链入口 */
+.ticket-tabs-bar__chain {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  margin-bottom: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--ops-border-soft);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ops-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ticket-tabs-bar__chain:hover,
+.ticket-tabs-bar__chain.is-active {
+  background: var(--ops-surface-inner);
+  color: var(--ops-text-primary);
+}
+
+/* 推理链展开面板：在页签行下方向下展开 */
+.ticket-chain-panel {
+  grid-row: 2;
+  border-bottom: 1px solid var(--ops-border);
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.ticket-chain-panel .reasoning-chain {
+  position: static;
+}
+
+/* 页签内容区 */
+.ticket-tab-panel {
+  grid-row: 3;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px 22px;
+  background: var(--ops-surface-main);
+}
+
+.ticket-tab-panel .ticket-thread__skeleton {
+  padding: 0;
+}
+
+.ticket-tab-panel__empty {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: var(--ops-text-tertiary);
+  font-size: 13px;
+}
+/* ============ 反灌异常触发票：一句话总结 + 数字孪生定位 ============ */
+.reflux-trigger__summary {
+  margin: 0 0 12px;
+  color: var(--ops-text-primary);
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+.reflux-trigger__summary mark {
+  padding: 0 2px;
+  background: none;
+  font-weight: 700;
+}
+
+/* 高亮色对齐 evidence-stat 的 danger/warning 色 */
+.reflux-trigger__summary mark.is-danger {
+  color: var(--ops-urgent);
+}
+
+.reflux-trigger__summary mark.is-warning {
+  color: var(--ops-warning);
+}
+
+.reflux-trigger__twin {
+  height: 320px;
+  border-radius: 8px;
+  background: #101214;
+  overflow: hidden;
+}
+
+/* ============ 数据收集卡：一句话总结 + 2×3 正常/异常对比图表 ============ */
+.data-collection__summary {
+  margin: 0 0 12px;
+  color: var(--ops-text-primary);
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+.data-collection__summary mark {
+  padding: 0 2px;
+  background: none;
+  font-weight: 700;
+}
+
+.data-collection__summary mark.is-danger {
+  color: var(--ops-urgent);
+}
+
+.data-collection__summary mark.is-warning {
+  color: var(--ops-warning);
+}
+
+/* 4 列网格，每张图 span 2 → 每行 2 张，共 3 行 */
+.data-collection__grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.collect-chart {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--ops-border-soft);
+  border-radius: 4px;
+  background: var(--ops-surface-inner);
+  grid-column: span 2;
+}
+
+.collect-chart__title {
+  color: var(--ops-text-primary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.collect-chart__plot svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.collect-chart__axis {
+  display: flex;
+  margin-top: 2px;
+  color: var(--ops-text-tertiary);
+  font-size: 9px;
+  justify-content: space-between;
+}
+
+.collect-chart__caption {
+  color: var(--ops-text-tertiary);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+/* 折线：灰 = 正常基线，红 = 异常数据线，红色半透明 = 异常区段 */
+.collect-chart__line {
+  fill: none;
+  stroke-width: 1.6;
+}
+
+.collect-chart__line.is-normal {
+  stroke: var(--ops-text-tertiary);
+  opacity: 0.75;
+}
+
+.collect-chart__line.is-alert {
+  stroke: var(--ops-urgent);
+}
+
+.collect-chart__alert-area {
+  fill: rgba(var(--ops-urgent-rgb), 0.16);
+}
+
+.collect-chart__zero {
+  fill: none;
+  stroke: var(--ops-border-soft);
+  stroke-dasharray: 3 3;
+}
+
+/* 柱状：灰柱 + 均值虚线，超均值红柱 */
+.collect-chart__bar {
+  fill: var(--ops-text-tertiary);
+  opacity: 0.55;
+}
+
+.collect-chart__bar.is-alert {
+  fill: var(--ops-urgent);
+  opacity: 1;
+}
+
+.collect-chart__bar-value {
+  fill: var(--ops-urgent);
+  font-size: 8px;
+  font-weight: 600;
+}
+
+.collect-chart__average,
+.collect-chart__threshold {
+  fill: none;
+  stroke: var(--ops-warning);
+  stroke-dasharray: 4 3;
+  stroke-width: 1;
+}
+
+.collect-chart__average-label,
+.collect-chart__threshold-label {
+  fill: var(--ops-warning);
+  font-size: 8px;
+}
+
+/* 热力图例：正常 → 异常 渐变条 */
+.collect-chart__legend {
+  display: flex;
+  margin-top: 4px;
+  align-items: center;
+  color: var(--ops-text-tertiary);
+  font-size: 9px;
+  gap: 5px;
+  justify-content: flex-end;
+}
+
+.collect-chart__legend-bar {
+  display: inline-block;
+  width: 48px;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgb(64, 78, 74), rgb(217, 84, 79));
+}
+
+.collect-chart__legend-swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.collect-chart__legend-swatch.is-normal {
+  background: var(--ops-text-tertiary);
+  opacity: 0.55;
+}
+
+.collect-chart__legend-swatch.is-alert {
+  background: var(--ops-urgent);
+}
+
+/* 桑基：流带宽度正比流量，alert 流红色 */
+.collect-chart__flow {
+  fill: none;
+  stroke: var(--ops-text-tertiary);
+  stroke-linecap: round;
+  opacity: 0.4;
+}
+
+.collect-chart__flow.is-alert {
+  stroke: var(--ops-urgent);
+  opacity: 0.75;
+}
+
+.collect-chart__flow-label {
+  fill: var(--ops-text-tertiary);
+  font-size: 8px;
+}
+
+.collect-chart__flow-label.is-alert {
+  fill: var(--ops-urgent);
+  font-weight: 600;
+}
+
+.collect-chart__node {
+  fill: var(--ops-surface-raised, var(--ops-surface-inner));
+  stroke: var(--ops-border-soft);
+}
+
+.collect-chart__node.is-alert {
+  stroke: var(--ops-urgent);
+}
+
+.collect-chart__node-label {
+  fill: var(--ops-text-tertiary);
+  font-size: 8px;
+}
+
+/* 离散图：灰点 + 红色放大异常点 */
+.collect-chart__dot {
+  fill: var(--ops-text-tertiary);
+  opacity: 0.6;
+}
+
+.collect-chart__dot.is-alert {
+  fill: var(--ops-urgent);
+  opacity: 1;
+}
+
+/* 雷达：网格 + 正常灰多边形 + 异常红多边形 */
+.collect-chart__radar-ring {
+  fill: none;
+  stroke: var(--ops-border-soft);
+}
+
+.collect-chart__radar-spoke {
+  stroke: var(--ops-border-soft);
+}
+
+.collect-chart__radar-label {
+  fill: var(--ops-text-tertiary);
+  font-size: 8px;
+}
+
+.collect-chart__radar-shape.is-normal {
+  fill: rgba(140, 150, 146, 0.12);
+  stroke: var(--ops-text-tertiary);
+  stroke-width: 1.2;
+}
+
+.collect-chart__radar-shape.is-alert {
+  fill: rgba(var(--ops-urgent-rgb), 0.22);
+  stroke: var(--ops-urgent);
+  stroke-width: 1.4;
+}
+
+/* 散点图坐标轴 */
+.collect-chart__axis-line {
+  fill: none;
+  stroke: var(--ops-border-soft);
+}
+
+.collect-chart__axis-tick {
+  stroke: var(--ops-border-soft);
+}
+
+.collect-chart__axis-value {
+  fill: var(--ops-text-tertiary);
+  font-size: 7.5px;
+}
+
+.collect-chart__axis-title {
+  fill: var(--ops-text-tertiary);
+  font-size: 8px;
+}
+
+/* ============ 根因分析流程：根卡 → 候选分支 → 验证链（从左到右，贝塞尔弧线连接，节点带置信度） ============ */
+.rootcause-flow {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, 220px);
+  gap: 20px 56px;
+  align-items: center;
+  padding: 4px 4px 12px;
+  overflow-x: auto;
+}
+
+/* 弧线连接层：覆盖整个网格，不响应交互 */
+.rfc-links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.rfc-links path {
+  fill: none;
+  stroke: var(--ops-border-soft);
+  stroke-width: 1.5;
+}
+
+.rfc-links path.is-kept {
+  stroke: rgba(var(--ops-urgent-rgb), 0.6);
+}
+
+.rfc-node {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--ops-border-soft);
+  border-radius: 10px;
+  background: var(--ops-surface-inner);
+}
+
+.rfc-node__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ops-text-primary);
+  line-height: 1.4;
+  text-align: left;
+}
+
+.rfc-node__desc {
+  font-size: 11px;
+  color: var(--ops-text-secondary);
+  line-height: 1.5;
+  text-align: left;
+}
+
+/* 节点右上角置信度角标 */
+.rfc-node__conf {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  padding: 1px 6px;
+  border: 1px solid var(--ops-border-soft);
+  border-radius: 8px;
+  background: var(--ops-surface-inner);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ops-text-tertiary);
+}
+
+.rfc-node.is-candidate .rfc-node__title,
+.rfc-node.is-chain .rfc-node__title {
+  padding-right: 48px;
+}
+
+/* 根卡括号说明文字：换行显示 */
+.rfc-node__note {
+  font-size: 10px;
+  color: var(--ops-text-secondary);
+  line-height: 1.4;
+  text-align: left;
+}
+
+/* 根节点：异常现象，红色边线 */
+.rfc-node--root {
+  justify-content: center;
+  border-color: rgba(var(--ops-urgent-rgb), 0.5);
+}
+
+/* 根卡容器：纵向堆叠，跨分支行均分列高 */
+.rfc-roots {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-self: stretch;
+}
+
+.rfc-roots .rfc-node--root {
+  flex: 1;
+}
+
+/* 节点内嵌迷你柱状图 */
+.rfc-mini-bar {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.rfc-mini-bar__axis {
+  stroke: var(--ops-border-soft);
+  stroke-width: 1;
+}
+
+.rfc-mini-bar__bar {
+  fill: rgba(140, 150, 165, 0.45);
+}
+
+.rfc-mini-bar__bar.is-alert {
+  fill: rgba(var(--ops-urgent-rgb), 0.75);
+}
+
+.rfc-mini-bar__value {
+  font-size: 9px;
+  font-weight: 700;
+  fill: var(--ops-text-secondary);
+}
+
+.rfc-mini-bar__label {
+  font-size: 9px;
+  fill: var(--ops-text-tertiary);
+}
+
+/* 节点内嵌迷你散点图：实测 vs 后台一致性对比 */
+.rfc-mini-scatter {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.rfc-mini-scatter__axis {
+  stroke: var(--ops-border-soft);
+  stroke-width: 1;
+}
+
+.rfc-mini-scatter__diagonal {
+  stroke: var(--ops-border-soft);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
+.rfc-mini-scatter__dot {
+  fill: rgba(140, 150, 165, 0.75);
+}
+
+.rfc-mini-scatter__value {
+  font-size: 8px;
+  font-weight: 700;
+  fill: var(--ops-text-secondary);
+}
+
+.rfc-mini-scatter__label {
+  font-size: 9px;
+  fill: var(--ops-text-tertiary);
+}
+
+/* 节点内嵌迷你表格：项目 / 内容两列 */
+.rfc-mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.rfc-mini-table th,
+.rfc-mini-table td {
+  padding: 4px 6px;
+  border: 1px solid var(--ops-border-soft);
+  text-align: left;
+}
+
+.rfc-mini-table th {
+  width: 62px;
+  font-weight: 600;
+  color: var(--ops-text-secondary);
+  background: rgba(140, 150, 165, 0.08);
+  white-space: nowrap;
+}
+
+.rfc-mini-table td {
+  color: var(--ops-text-primary);
+}
+
+/* 节点内嵌迷你进度条：三段色区 + 指针 */
+.rfc-mini-gauge {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.rfc-mini-gauge__zone.is-danger {
+  fill: rgba(var(--ops-urgent-rgb), 0.55);
+}
+
+.rfc-mini-gauge__zone.is-warn {
+  fill: rgba(var(--ops-warning-rgb), 0.55);
+}
+
+.rfc-mini-gauge__zone.is-ok {
+  fill: rgba(var(--ops-success-rgb), 0.55);
+}
+
+.rfc-mini-gauge__pointer {
+  stroke: var(--ops-text-primary);
+  stroke-width: 1.5;
+  fill: var(--ops-text-primary);
+}
+
+.rfc-mini-gauge__label {
+  font-size: 8px;
+  fill: var(--ops-text-tertiary);
+}
+
+/* 节点内嵌迷你折线图 */
+.rfc-mini-line {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.rfc-mini-line__axis {
+  stroke: var(--ops-border-soft);
+  stroke-width: 1;
+}
+
+.rfc-mini-line__shade {
+  fill: rgba(var(--ops-warning-rgb), 0.14);
+}
+
+.rfc-mini-line__path {
+  fill: none;
+  stroke-width: 1.6;
+}
+
+.rfc-mini-line__path.is-ok {
+  stroke: rgba(var(--ops-success-rgb), 0.85);
+}
+
+.rfc-mini-line__path.is-danger {
+  stroke: rgba(var(--ops-urgent-rgb), 0.9);
+}
+
+.rfc-mini-line__mark {
+  fill: none;
+  stroke: rgba(var(--ops-urgent-rgb), 0.95);
+  stroke-width: 1.6;
+}
+
+.rfc-mini-line__mark-arrow {
+  fill: none;
+  stroke: rgba(var(--ops-urgent-rgb), 0.95);
+  stroke-width: 1.2;
+}
+
+.rfc-mini-line__mark-label {
+  font-size: 8px;
+  font-weight: 700;
+  fill: rgba(var(--ops-urgent-rgb), 0.95);
+}
+
+.rfc-mini-line__tick {
+  font-size: 8px;
+  fill: var(--ops-text-tertiary);
+}
+
+.rfc-mini-line__legend-dot.is-ok {
+  fill: rgba(var(--ops-success-rgb), 0.85);
+}
+
+.rfc-mini-line__legend-dot.is-danger {
+  fill: rgba(var(--ops-urgent-rgb), 0.9);
+}
+
+/* 候选分支 */
+.rfc-node.is-candidate {
+  justify-content: center;
+  background: var(--ops-surface-raised, var(--ops-surface-inner));
+}
+
+/* 命中分支：与左侧根卡一致的红色边线，置信度递增 */
+.rfc-node.is-kept {
+  border-color: rgba(var(--ops-urgent-rgb), 0.55);
+}
+
+.rfc-node.is-kept .rfc-node__title {
+  color: var(--ops-text-primary);
+}
+
+.rfc-node.is-kept .rfc-node__conf {
+  color: var(--ops-urgent);
+  border-color: rgba(var(--ops-urgent-rgb), 0.55);
+}
+
+/* 排除分支：灰化，置信度递减 */
+.rfc-node.is-dropped {
+  opacity: 0.72;
+}
+
+.rfc-node.is-dropped .rfc-node__title {
+  color: var(--ops-text-tertiary);
+}
+
+/* 诊断结论卡处理建议：AI 推荐项高亮 */
+.chat-defect-card__choice.is-recommended {
+  border-color: rgba(var(--ops-urgent-rgb), 0.55);
+  background: rgba(var(--ops-urgent-rgb), 0.08);
+}
+
+/* 诊断结论面板：根因/风险摘要 + 处理方式选项卡 */
+.conclusion-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.conclusion-panel__divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ops-text-tertiary);
+  font-size: 11px;
+}
+
+.conclusion-panel__divider::before,
+.conclusion-panel__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--ops-border-soft);
+}
+
+.conclusion-panel__options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.conclusion-panel__option {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.conclusion-panel__kv-line {
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* 诊断结论摘要指标卡：复用三列网格，风险跨前两列（右缘对齐中间选项卡），告警等级占第三列（左缘对齐第三选项卡），长文换行显示全 */
+.conclusion-panel .ticket-stage-metrics--2 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.conclusion-panel .ticket-stage-metrics--2 .ticket-stage-metric:nth-child(2) {
+  grid-column: span 2;
+}
+
+.conclusion-panel .ticket-stage-metric strong {
+  white-space: normal;
+}
+
+/* 选项卡字号对齐摘要指标卡：标题 17px，耗时/说明加大 */
+.conclusion-panel .ticket-stage-card__heading h4 {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.conclusion-panel .ticket-stage-kv dt,
+.conclusion-panel .ticket-stage-kv dd {
+  font-size: 13px;
+}
+
+.conclusion-panel__option-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.conclusion-panel__btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--ops-border);
+  border-radius: 6px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ops-text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.conclusion-panel__btn:hover {
+  border-color: rgba(var(--ops-accent-rgb), 0.5);
+  color: var(--ops-text-primary);
+}
+
+.conclusion-panel__btn.is-primary {
+  border-color: transparent;
+  background: var(--ops-accent-primary);
+  color: #fff;
+}
+
+.conclusion-panel__btn.is-primary:hover {
+  background: var(--ops-accent-hover);
+  color: #fff;
+}
+
+
+/* 0901 visual language: V6 behavior, neutral surfaces and semantic state colors. */
+.settings-panel__tabs {
+  width: 100%;
+  margin-top: 2px;
+}
+
+.settings-hint {
+  margin: 9px 0 0;
+  line-height: 1.6;
+}
+
+.gui-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 12px 10px;
+}
+
+.gui-tabs__tab {
+  position: relative;
+  padding: 6px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--ops-text-tertiary);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.gui-tabs__tab:hover,
+.gui-tabs__tab.is-active {
+  color: var(--ops-text-primary);
+}
+
+.gui-tabs__tab.is-active {
+  font-weight: 700;
+}
+
+.gui-tabs__tab.is-active::after {
+  position: absolute;
+  right: 10px;
+  bottom: 0;
+  left: 10px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--ops-accent-primary);
+  content: '';
+}
+
+.gui-tabs__add {
+  margin-left: auto;
+}
+
+.task-list--gui .task-card {
+  width: calc(100% - 4px);
+  margin-right: 2px;
+  margin-left: 2px;
+}
+
+.composer-mode__menu--below {
+  top: calc(100% + 6px);
+  right: 0;
+  bottom: auto;
+  left: auto;
+}
+
+.ticket-page--reasoning { grid-template-rows: minmax(0, 1fr) auto; }
+.ticket-tab-panel .ticket-thread__card { max-width: 1120px; margin: 0 auto; }
+.ticket-tab-panel .ticket-thread__skeleton { max-width: 1120px; margin: 0 auto; }
+.ticket-tabs__tab-main:focus-visible,
+.ticket-tabs__tab-close:focus-visible,
+.ticket-tabs-bar__chain:focus-visible,
+.conclusion-panel__btn:focus-visible { outline: 2px solid var(--ops-accent-primary); outline-offset: 2px; }
+.reflux-trigger__monitor { width: 100%; height: 100%; }
+[data-theme='light'] .reflux-trigger__twin { background: var(--ops-surface-inner); }
+[data-theme='light'] .collect-chart__legend-bar { background: linear-gradient(90deg, var(--ops-surface-action), var(--ops-urgent)); }
+@media (max-width: 1380px) {
+  .ticket-tab-panel { padding: 16px; }
+  .rootcause-flow { grid-template-columns: repeat(5, 196px); gap: 16px 40px; }
+}
+@media (max-width: 1160px) {
+  .data-collection__grid { grid-template-columns: 1fr; }
+  .collect-chart { grid-column: auto; }
+  .conclusion-panel__options { grid-template-columns: 1fr; }
+  .conclusion-panel .ticket-stage-metrics--2 { grid-template-columns: 1fr; }
+  .conclusion-panel .ticket-stage-metrics--2 .ticket-stage-metric:nth-child(2) { grid-column: auto; }
+}
+
 /* 首进编排卡片未就绪时的骨架占位：呼吸灰块 */
 @keyframes skeletonBreath {
   0%, 100% { opacity: 0.45; }

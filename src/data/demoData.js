@@ -274,7 +274,7 @@ export const flowStepsV2 = [
 export const flowVariants = {
   standard: {
     id: 'standard',
-    label: '标准 13步',
+    label: '标准流程（13步）',
     steps: flowSteps,
     spaceSteps: SPACE_ADVANCE_STEPS,
     rejectTargets: { 5: 5, 7: 7, 8: 7, 9: 8, 12: 10 },
@@ -282,7 +282,7 @@ export const flowVariants = {
   },
   merged: {
     id: 'merged',
-    label: '合并 8步',
+    label: '合并流程（8步）',
     steps: flowStepsV2,
     spaceSteps: [4, 5, 6],
     rejectTargets: { 2: 1, 3: 2, 4: 3, 7: 5 },
