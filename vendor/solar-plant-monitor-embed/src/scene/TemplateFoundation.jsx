@@ -59,8 +59,11 @@ function createRoundedFoundationGeometry(width, depth, height, radius) {
 
 export function TemplateFoundation({
   bounds,
+  color = '#222222',
   coverageOpacity = 1,
   interactive = true,
+  surfaceOpacity,
+  unlit = false,
 }) {
   const [width, height, depth] = bounds.size
   const geometry = useMemo(
@@ -77,23 +80,41 @@ export function TemplateFoundation({
   useEffect(() => () => geometry.dispose(), [geometry])
   const resolvedCoverageOpacity = clampCoverageOpacity(coverageOpacity)
   const coverageReduced = isCoverageReduced(resolvedCoverageOpacity)
+  const hasSurfaceOpacity = surfaceOpacity !== undefined
+  const opacity = hasSurfaceOpacity
+    ? surfaceOpacity
+    : coverageReduced
+      ? resolvedCoverageOpacity
+      : 0.6
+  const transparent = hasSurfaceOpacity ? surfaceOpacity < 1 : !coverageReduced
+  const depthWrite = hasSurfaceOpacity ? surfaceOpacity >= 1 : coverageReduced
 
   return (
     <mesh
       geometry={geometry}
       position={[bounds.center[0], height, bounds.center[2]]}
       raycast={interactive ? undefined : ignoreRaycast}
-      receiveShadow={!coverageReduced}
+      receiveShadow={!unlit && !coverageReduced}
     >
-      <meshStandardMaterial
-        color="#222222"
-        metalness={0.02}
-        roughness={0.9}
-        alphaToCoverage={coverageReduced}
-        transparent={!coverageReduced}
-        opacity={coverageReduced ? resolvedCoverageOpacity : 0.6}
-        depthWrite={coverageReduced}
-      />
+      {unlit ? (
+        <meshBasicMaterial
+          color={color}
+          depthWrite={depthWrite}
+          opacity={opacity}
+          toneMapped={false}
+          transparent={transparent}
+        />
+      ) : (
+        <meshStandardMaterial
+          color={color}
+          metalness={0.02}
+          roughness={0.9}
+          alphaToCoverage={!hasSurfaceOpacity && coverageReduced}
+          depthWrite={depthWrite}
+          opacity={opacity}
+          transparent={transparent}
+        />
+      )}
     </mesh>
   )
 }

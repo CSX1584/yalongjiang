@@ -2,7 +2,6 @@ import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import { syncInfiniteGroundToCamera } from './infiniteGround.js'
-import { SCENE_BACKGROUND_COLOR } from './sceneFog.js'
 
 const vertexShader = /* glsl */ `
   varying vec3 vWorldPosition;
@@ -43,20 +42,26 @@ const fragmentShader = /* glsl */ `
   }
 `
 
-export function DotGrid({ spacing = 2, fadeRange = [220, 650] }) {
+export function DotGrid({
+  backgroundColor = '#111111',
+  baseColor = '#555555',
+  dotColor = '#999999',
+  spacing = 2,
+  fadeRange = [220, 650],
+}) {
   const meshRef = useRef(null)
   const uniforms = useMemo(
     () => ({
       uSpacing: { value: spacing },
       uDotRadius: { value: 0.055 },
-      uBaseColor: { value: new THREE.Color('#555555') },
-      uDotColor: { value: new THREE.Color('#999999') },
+      uBaseColor: { value: new THREE.Color(baseColor) },
+      uDotColor: { value: new THREE.Color(dotColor) },
       uCameraPosition: { value: new THREE.Vector3() },
-      uBackgroundColor: { value: new THREE.Color(SCENE_BACKGROUND_COLOR) },
+      uBackgroundColor: { value: new THREE.Color(backgroundColor) },
       uHorizonNear: { value: fadeRange[0] },
       uHorizonFar: { value: fadeRange[1] },
     }),
-    [],
+    [backgroundColor, baseColor, dotColor],
   )
 
   useEffect(() => {

@@ -1,25 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
-  ActivityIcon as Activity,
   ArrowLeft,
-  Robot as Bot,
   CheckCircle as CheckCircle2,
-  CaretRight as ChevronRight,
   WarningCircle as CircleAlert,
-  FileMagnifyingGlass as FileSearch,
-  ChatText as MessageSquareText,
-  Paperclip,
-  PaperPlaneTilt as Send,
-  ShieldCheck,
-  User as UserRound,
   X,
 } from '@phosphor-icons/react'
 import { useApp } from '../context/AppContext'
-import { flowSteps, SPACE_ADVANCE_STEPS } from '../data/demoData'
-import ApprovalPanel from '../components/ApprovalPanel'
-import TaskFlow, { DEFAULT_FLOW_STEPS } from '../components/TaskFlow'
+import ReasoningChain, { REASONING_NODE_STEP } from '../components/ReasoningChain'
+import TaskFlow from '../components/TaskFlow'
 import TicketStageContent from '../components/TicketStageContent'
+import { resolveStepRole } from '../data/demoData'
 
 const STATUS_META = {
   in_progress: { label: '进行中', className: 'is-running' },
@@ -31,15 +22,6 @@ const STATUS_META = {
   已完成: { label: '已完成', className: 'is-completed' },
   无人机复检中: { label: '复检中', className: 'is-running' },
   已退回重新处理: { label: '已退回', className: 'is-pending' },
-}
-
-const MESSAGE_ICONS = {
-  agent: Bot,
-  approval: ShieldCheck,
-  evidence: FileSearch,
-  human: UserRound,
-  user: MessageSquareText,
-  system: Activity,
 }
 
 function findTicket(tickets, activeId) {
@@ -57,20 +39,13 @@ function findTicket(tickets, activeId) {
 }
 
 function buildSteps(source) {
-  const supplied = Array.isArray(source) ? source : []
-  return DEFAULT_FLOW_STEPS.map((fallback, offset) => {
-    const item = supplied.find((step) => Number(step.index ?? step.step ?? step.order) === fallback.index)
-      ?? supplied[offset]
-      ?? {}
-    return {
-      ...fallback,
-      ...item,
-      index: fallback.index,
-      shortLabel: item.shortLabel ?? item.short ?? fallback.shortLabel,
-      name: item.name ?? item.label ?? fallback.name,
-      executor: item.executor ?? item.owner ?? fallback.executor,
-    }
-  })
+  return (Array.isArray(source) ? source : []).map((item, offset) => ({
+    ...item,
+    index: Number(item.index ?? item.step ?? item.order) || offset + 1,
+    shortLabel: item.shortLabel ?? item.short ?? item.name,
+    name: item.name ?? item.label ?? `步骤 ${offset + 1}`,
+    executor: item.executor ?? item.owner ?? '',
+  }))
 }
 
 function fallbackHistory(ticket) {
@@ -80,7 +55,7 @@ function fallbackHistory(ticket) {
       id: 'event-detected',
       step: 1,
       type: 'system',
-      actor: '感知 Agent',
+      actor: '异常感知',
       time: ticket?.updatedAt ?? '08:42',
       title: '异常事件已触发',
       content: ticket?.description ?? '实时监测数据超过告警阈值，已自动创建诊断任务。',
@@ -89,7 +64,7 @@ function fallbackHistory(ticket) {
       id: 'event-diagnosed',
       step: 2,
       type: 'agent',
-      actor: '诊断 Agent',
+      actor: 'AI 诊断',
       time: '08:45',
       title: '诊断结论与设备数据完成对齐',
       content: '异常位置、趋势变化和同类设备基线已完成交叉验证，证据链已归档。',
@@ -105,12 +80,6 @@ function fallbackHistory(ticket) {
       content: '请确认诊断结论，或选择挂起、无人机复检分支补充现场证据。',
     },
   ]
-}
-
-function contentLines(message) {
-  const content = message.content ?? message.text ?? message.description ?? ''
-  if (Array.isArray(content)) return content.filter(Boolean).map(String)
-  return content ? [String(content)] : []
 }
 
 function collectEvidence(ticket, history) {
@@ -140,12 +109,6 @@ function collectEvidence(ticket, history) {
   return items.filter((item, index) => items.findIndex((other) => other.id === item.id) === index)
 }
 
-function statusForSelected(stepIndex, currentStep, completed) {
-  if (completed || stepIndex < currentStep) return '已完成'
-  if (stepIndex === currentStep) return '进行中'
-  return '未开始'
-}
-
 function ticketStatusMeta(status) {
   if (STATUS_META[status]) return STATUS_META[status]
   const value = String(status ?? '')
@@ -156,6 +119,12 @@ function ticketStatusMeta(status) {
     return STATUS_META.in_progress
   }
   return STATUS_META.in_progress
+}
+
+// 反灌单走顶部推理链布局：标题栏与节点范围行由思维链替代
+function isRefluxTicket(ticket) {
+  const key = `${ticket?.id ?? ''} ${ticket?.title ?? ''}`
+  return key.includes('DF-20260820-002') || key.includes('反灌')
 }
 
 function severityTone(severity) {
@@ -169,18 +138,21 @@ export default function TicketPage() {
   const { ticketId, id } = useParams()
   const activeId = ticketId || id
   const navigate = useNavigate()
-  const { tickets, role, advanceTicket, requestDrone, showToast } = useApp()
+  const { tickets, role, setRole, advanceTicket, requestDrone, showToast, flowSteps, spaceAdvanceSteps, reasoningFocus, ticketStepFocus, flowVariant, flowVariants, ticketIntroId, ticketCardsReadyId } = useApp()
   const ticket = useMemo(() => findTicket(tickets, activeId), [activeId, tickets])
-  const steps = useMemo(() => buildSteps(flowSteps), [])
-  const currentStep = Math.min(13, Math.max(1, Number(ticket?.currentStep) || 1))
+  const steps = useMemo(() => buildSteps(flowSteps), [flowSteps])
+  const lastStepIndex = steps.length
+  const currentStep = Math.min(lastStepIndex, Math.max(1, Number(ticket?.currentStep) || 1))
+  // 缺陷单内容所在步骤：合并流程在故障诊断列，标准流程在缺陷单生成列
+  const defectStepIndex = steps.find((step) => step.id === 'defect' || step.combined === 'diagnose-defect')?.index ?? currentStep
   const [selectedStep, setSelectedStep] = useState(currentStep)
+  // 作业审批节点的会签分支：'' 不区分分支，'control' 工作票 / 'operations' 操作票
+  const [selectedBranch, setSelectedBranch] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [draft, setDraft] = useState('')
-  const [localMessages, setLocalMessages] = useState([])
   const [busy, setBusy] = useState('')
   const streamRef = useRef(null)
-  const qaStreamRef = useRef(null)
-  const qaReplyTimerRef = useRef(null)
+  // 瀑布流卡片锚点：步骤号 → 卡片容器，思维链/对话流节点点击后滚动定位
+  const cardRefs = useRef(new Map())
   const autoRequestRef = useRef('')
 
   const status = ticketStatusMeta(ticket?.status)
@@ -188,7 +160,11 @@ export default function TicketPage() {
 
   const runAction = useCallback(async (action) => {
     if (!ticket || busy) return
-    setBusy(action)
+    const isObject = typeof action === 'object' && action !== null
+    const busyKey = isObject && action.type === 'approve' && action.signRole
+      ? `sign-${action.signRole}`
+      : isObject ? action.type : action
+    setBusy(busyKey)
     try {
       if (action === 'drone') {
         await requestDrone?.(ticket.id)
@@ -205,21 +181,56 @@ export default function TicketPage() {
 
   useEffect(() => {
     setSelectedStep(currentStep)
+    setSelectedBranch('')
   }, [activeId, currentStep])
 
+  // 进入工单：默认选中缺陷单卡片（覆盖上面的 currentStep 默认选中；推进步骤时仍跟随最新步骤）
   useEffect(() => {
-    const stream = streamRef.current
-    if (stream) stream.scrollTop = 0
-  }, [activeId, currentStep, selectedStep])
+    setSelectedStep(defectStepIndex)
+    setSelectedBranch('')
+  }, [activeId, defectStepIndex])
 
-  useEffect(() => {
-    const stream = qaStreamRef.current
-    if (stream && localMessages.length) stream.scrollTop = stream.scrollHeight
-  }, [localMessages.length])
-
-  useEffect(() => () => {
-    if (qaReplyTimerRef.current) window.clearTimeout(qaReplyTimerRef.current)
+  // 卡片滚动定位：切工单瞬时定位，推进步骤/点击节点平滑滚动
+  const lastTicketRef = useRef('')
+  const scrollToStep = useCallback((index, behavior = 'smooth') => {
+    cardRefs.current.get(index)?.scrollIntoView({ behavior, block: 'start' })
   }, [])
+
+  // 步骤栏/思维链选择：记录选中态并把对应卡片滚进可视区
+  const handleSelectStep = useCallback((index, _step, branch = '') => {
+    setSelectedStep(index)
+    setSelectedBranch(branch)
+    scrollToStep(index)
+  }, [scrollToStep])
+
+  // 对话胶囊点击：选中节点所属步骤，下方展开该步骤详情（节点高亮由 ReasoningChain 处理）
+  useEffect(() => {
+    const stepId = reasoningFocus?.nodeId ? REASONING_NODE_STEP[reasoningFocus.nodeId] : null
+    if (!stepId) return
+    const target = steps.find((step) => step.id === stepId)
+    if (target) handleSelectStep(target.index, target)
+  }, [handleSelectStep, reasoningFocus, steps])
+
+  // 对话流步骤卡片「查看步骤」点击：滚动定位到对应步骤卡片
+  useEffect(() => {
+    if (!ticketStepFocus?.stepIndex) return
+    const target = steps.find((step) => step.index === ticketStepFocus.stepIndex)
+    if (target) handleSelectStep(target.index, target)
+  }, [handleSelectStep, steps, ticketStepFocus])
+
+  // 全局角色跟随当前节点归属角色切换，保证审批权限与界面显示的角色一致
+  useEffect(() => {
+    if (!ticket || completed) return
+    const nextRoleId = resolveStepRole(steps[currentStep - 1], ticket).id
+    if (nextRoleId && nextRoleId !== role) setRole(nextRoleId)
+  }, [completed, currentStep, role, setRole, steps, ticket])
+
+  // 换工单瞬移定位到缺陷单卡片；同单流程推进平滑滚动到最新卡片
+  useEffect(() => {
+    const switched = lastTicketRef.current !== activeId
+    lastTicketRef.current = activeId
+    scrollToStep(switched ? defectStepIndex : currentStep, switched ? 'auto' : 'smooth')
+  }, [activeId, currentStep, defectStepIndex, scrollToStep])
 
   useEffect(() => {
     if (!ticket || completed) return undefined
@@ -227,7 +238,7 @@ export default function TicketPage() {
     const handleKeyDown = (event) => {
       if (event.code !== 'Space' || event.repeat || event.defaultPrevented) return
       if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return
-      if (!SPACE_ADVANCE_STEPS.includes(currentStep) || drawerOpen || busy) return
+      if (!spaceAdvanceSteps.includes(currentStep) || drawerOpen || busy) return
       const target = event.target
       const tagName = String(target?.tagName ?? '').toLowerCase()
       if (['input', 'textarea', 'select'].includes(tagName) || target?.isContentEditable) return
@@ -237,16 +248,16 @@ export default function TicketPage() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [busy, completed, currentStep, drawerOpen, runAction, ticket])
+  }, [busy, completed, currentStep, drawerOpen, runAction, spaceAdvanceSteps, ticket])
 
   useEffect(() => {
-    if (!ticket || completed || currentStep !== 13 || busy) return
-    const requestKey = `${ticket.id}:13`
+    if (!ticket || completed || currentStep !== lastStepIndex || busy) return
+    const requestKey = `${ticket.id}:${lastStepIndex}`
     if (autoRequestRef.current === requestKey) return
     autoRequestRef.current = requestKey
     const timer = window.setTimeout(() => runAction('auto'), 1900)
     return () => window.clearTimeout(timer)
-  }, [busy, completed, currentStep, runAction, ticket])
+  }, [busy, completed, currentStep, lastStepIndex, runAction, ticket])
 
   const history = useMemo(() => {
     if (!ticket) return []
@@ -256,13 +267,9 @@ export default function TicketPage() {
   }, [ticket])
 
   const evidence = useMemo(() => collectEvidence(ticket, history), [history, ticket])
-  const selectedInfo = steps[selectedStep - 1] ?? steps[0]
-  const currentInfo = {
-    ...steps[currentStep - 1],
-    nextName: steps[currentStep]?.name ?? '流程完成',
-  }
-  const canProcessCurrentStep = !currentInfo.approverRole || role === currentInfo.approverRole || role === 'admin'
-  const visibleHistory = history.filter((item) => Number(item.step ?? item.stepId) === selectedStep)
+
+  // 反灌单走顶部推理链布局：标题栏与节点范围行由思维链替代
+  const reasoningMode = isRefluxTicket(ticket)
 
   if (!ticket) {
     return (
@@ -275,231 +282,98 @@ export default function TicketPage() {
     )
   }
 
-  const submitInstruction = () => {
-    const text = draft.trim()
-    if (!text) return
-    const now = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-    setLocalMessages((items) => [
-      ...items,
-      {
-        id: `local-${Date.now()}`,
-        type: 'user',
-        actor: '当前用户',
-        time: now,
-        title: '补充指令',
-        content: text,
-        step: currentStep,
-      },
-    ])
-    setDraft('')
-    if (qaReplyTimerRef.current) window.clearTimeout(qaReplyTimerRef.current)
-    qaReplyTimerRef.current = window.setTimeout(() => {
-      setLocalMessages((items) => [
-        ...items,
-        {
-          id: `agent-${Date.now()}`,
-          type: 'agent',
-          actor: 'Smart Assistant',
-          time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-          title: '智能体回复',
-          content: '补充指令已记录，我会结合当前节点和已有证据继续分析。',
-          step: currentStep,
-        },
-      ])
-      qaReplyTimerRef.current = null
-    }, 420)
-  }
-
   return (
-    <div className={`ticket-page${drawerOpen ? ' is-drawer-open' : ''}`}>
-      <header className="ticket-page__header">
-        <button
-          className="ticket-page__back"
-          type="button"
-          onClick={() => navigate('/')}
-          aria-label="返回驾驶舱"
-          title="返回驾驶舱"
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <div className="ticket-page__identity">
-          <div className="ticket-page__breadcrumb">
-            <span>运维工单</span>
-            <ChevronRight size={12} aria-hidden="true" />
-            <span>{ticket.id}</span>
-          </div>
-          <div className="ticket-page__title-row">
-            <h1>{ticket.title}</h1>
-            <span className={`ticket-page__status ${status.className}`}>
-              <span aria-hidden="true" />
-              {status.label}
-            </span>
-            {ticket.severity && (
-              <span className={`ticket-page__severity is-${severityTone(ticket.severity)}`}>
-                <CircleAlert size={12} aria-hidden="true" />
-                {ticket.severity}
+    <div className={`ticket-page${reasoningMode ? ' ticket-page--reasoning' : ''}${drawerOpen ? ' is-drawer-open' : ''}`}>
+      {!reasoningMode && (
+        <header className="ticket-page__header">
+          <button
+            className="ticket-page__back"
+            type="button"
+            onClick={() => navigate('/')}
+            aria-label="返回驾驶舱"
+            title="返回驾驶舱"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div className="ticket-page__identity">
+            <div className="ticket-page__title-row">
+              <h1>{ticket.title}</h1>
+              <span className={`ticket-page__status ${status.className}`}>
+                <span aria-hidden="true" />
+                {status.label}
               </span>
-            )}
+              {ticket.severity && (
+                <span className={`ticket-page__severity is-${severityTone(ticket.severity)}`}>
+                  <CircleAlert size={12} aria-hidden="true" />
+                  {ticket.severity}
+                </span>
+              )}
+            </div>
           </div>
-          <div className="ticket-page__meta">
-            <span>{ticket.station ?? ticket.stationName ?? '雅砻江光风储电站'}</span>
-            <span>{ticket.assignee ?? '集控运维组'}</span>
-            <span>更新 {ticket.updatedAt ?? '刚刚'}</span>
-          </div>
-        </div>
-        <button
-          className="ticket-page__evidence-button"
-          type="button"
-          onClick={() => setDrawerOpen(true)}
-        >
-          <FileSearch size={16} aria-hidden="true" />
-          证据链
-          <span>{evidence.length}</span>
-        </button>
-      </header>
+        </header>
+      )}
 
-      <TaskFlow
-        steps={steps}
-        currentStep={currentStep}
-        selectedStep={selectedStep}
-        completed={completed}
-        onSelect={setSelectedStep}
-      />
+      {reasoningMode && (
+        <ReasoningChain
+          completed={completed}
+          currentStep={currentStep}
+          focusNode={reasoningFocus}
+          onSelect={handleSelectStep}
+          selectedStep={selectedStep}
+          steps={steps}
+        />
+      )}
 
       <div className="ticket-page__workspace">
         <section className="ticket-thread" aria-label="任务对话与证据流">
-          <div className="ticket-thread__scope">
-            <div>
-              <span>节点 {String(selectedInfo.index).padStart(2, '0')}</span>
-              <h2>{selectedInfo.name}</h2>
-            </div>
-            <div className="ticket-thread__scope-meta">
-              <span>{selectedInfo.executor}</span>
-              <span>{statusForSelected(selectedInfo.index, currentStep, completed)}</span>
-            </div>
-          </div>
-
-          <div className="ticket-thread__stream" ref={streamRef}>
-            {visibleHistory.map((message) => {
-              const Icon = MESSAGE_ICONS[message.type] ?? MESSAGE_ICONS.system
-              const lines = contentLines(message)
-              const attachmentCount = Number(message.attachmentCount)
-                || (Array.isArray(message.attachments) ? message.attachments.length : 0)
-
-              return (
-                <article className={`ticket-message ticket-message--${message.type ?? 'system'}`} key={message.id}>
-                  <div className="ticket-message__rail">
-                    <span className="ticket-message__icon"><Icon size={15} aria-hidden="true" /></span>
-                    <span className="ticket-message__line" aria-hidden="true" />
+          {/* 瀑布流：已解锁步骤卡片依次叠放，新步骤追加在下方，审批面板跟随当前步骤卡片；首进编排期间卡片逐块生成。
+              卡片在左侧首条「已深度思考」气泡播完 1s 后（ticketCardsReadyId 置位）才渲染，之前显示骨架占位 */}
+          <div className={`ticket-thread__stream${ticketIntroId === ticket?.id ? ' ticket-thread__stream--intro' : ''}`} ref={streamRef}>
+            {ticketIntroId === ticket?.id && ticketCardsReadyId !== ticket?.id ? (
+              <div className="ticket-thread__skeleton" aria-hidden="true">
+                <span /><span /><span />
+              </div>
+            ) : (
+              steps
+                .filter((stepInfo) => completed || stepInfo.index <= currentStep)
+                .map((stepInfo) => (
+                  <div
+                    className="ticket-thread__card"
+                    data-step={stepInfo.index}
+                    key={stepInfo.id ?? stepInfo.index}
+                    ref={(el) => {
+                      if (el) cardRefs.current.set(stepInfo.index, el)
+                      else cardRefs.current.delete(stepInfo.index)
+                    }}
+                  >
+                    <TicketStageContent
+                      step={stepInfo}
+                      ticket={ticket}
+                      currentStep={currentStep}
+                      completed={completed}
+                      branchRole={stepInfo.index === selectedStep ? selectedBranch : ''}
+                    />
                   </div>
-                  <div className="ticket-message__body">
-                    <div className="ticket-message__meta">
-                      <strong>{message.actor ?? message.role ?? '流程引擎'}</strong>
-                      <time>{message.time ?? message.at ?? ''}</time>
-                    </div>
-                    <h3>{message.title ?? '流程更新'}</h3>
-                    {lines.map((line, index) => <p key={`${message.id}-line-${index}`}>{line}</p>)}
-                    {attachmentCount > 0 && (
-                      <button
-                        className="ticket-message__evidence"
-                        type="button"
-                        onClick={() => setDrawerOpen(true)}
-                      >
-                        <Paperclip size={13} aria-hidden="true" />
-                        {attachmentCount} 项证据
-                        <ChevronRight size={13} aria-hidden="true" />
-                      </button>
-                    )}
-                  </div>
-                </article>
-              )
-            })}
-            <TicketStageContent
-              step={selectedInfo}
-              ticket={ticket}
-              currentStep={currentStep}
-              completed={completed}
-            />
-            {selectedInfo.index === currentStep && (
-              <ApprovalPanel
-                className="approval-panel--inline"
-                ticket={ticket}
-                step={currentInfo}
-                busy={busy}
-                disabled={completed}
-                canProcess={canProcessCurrentStep}
-                onApprove={() => runAction('approve')}
-                onReject={() => runAction('reject')}
-                onSuspend={() => runAction('suspend')}
-                onDrone={() => runAction('drone')}
-                onAdvance={() => runAction('space')}
-              />
+                ))
             )}
           </div>
 
         </section>
-
-        <aside className="ticket-qa" aria-label="独立问答">
-          <header className="ticket-qa__header">
-            <span className="ticket-qa__brand" role="img" aria-label="Smart Assistant" />
-            <span className="ticket-qa__attachment-count" aria-label="问答附件 0 项">
-              <Paperclip size={14} aria-hidden="true" />
-              0
-            </span>
-          </header>
-
-          <div className="ticket-qa__stream" ref={qaStreamRef}>
-            {localMessages.length === 0 ? (
-              <div className="ticket-qa__empty">暂无问答记录</div>
-            ) : localMessages.map((message) => (
-              <article className={`ticket-qa__message ticket-qa__message--${message.type ?? 'system'}`} key={message.id}>
-                <div>
-                  <strong>{message.actor}</strong>
-                  <time>{message.time}</time>
-                </div>
-                {contentLines(message).map((line, index) => (
-                  <p key={`${message.id}-qa-${index}`}>{line}</p>
-                ))}
-              </article>
-            ))}
-          </div>
-
-          <div className="ticket-composer ticket-qa__composer">
-            <button
-              className="ticket-composer__evidence"
-              type="button"
-              onClick={() => setDrawerOpen(true)}
-              aria-label="打开证据链"
-              title="打开证据链"
-            >
-              <Paperclip size={17} />
-            </button>
-            <textarea
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey) {
-                  event.preventDefault()
-                  submitInstruction()
-                }
-              }}
-              rows={1}
-              placeholder="补充处置意见或向智能体提问"
-              aria-label="补充处置意见"
-            />
-            <button
-              className="ticket-composer__send"
-              type="button"
-              disabled={!draft.trim()}
-              onClick={submitInstruction}
-              aria-label="发送"
-              title="发送"
-            >
-              <Send size={17} />
-            </button>
-          </div>
-        </aside>
       </div>
+
+      {/* 步骤栏与时间轴固定在页面底部；版本3 不渲染 */}
+      {!flowVariants[flowVariant]?.hideTaskFlow && (
+        <TaskFlow
+          steps={steps}
+          currentStep={currentStep}
+          selectedStep={selectedStep}
+          completed={completed}
+          onSelect={handleSelectStep}
+          history={ticket?.history}
+          signoffs={ticket?.permitSignoffs}
+          selectedBranch={selectedBranch}
+        />
+      )}
 
       {drawerOpen && (
         <div className="evidence-drawer-layer">

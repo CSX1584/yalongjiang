@@ -43,7 +43,7 @@ import {
   getContentBoundingSphere,
   getGroundFadeRange,
   getPerspectiveFogRange,
-  SCENE_BACKGROUND_COLOR,
+  getSceneColorScheme,
 } from '../scene/sceneFog.js'
 import { InstancedAssetModel } from '../scene/AssetModel.jsx'
 import {
@@ -103,7 +103,7 @@ function MonitorContextRecovery({ onContextLost, onContextRestored }) {
   return null
 }
 
-function MonitorFog({ contentBounds }) {
+function MonitorFog({ color, contentBounds }) {
   const fogRef = useRef(null)
   const initializedRef = useRef(false)
   const invalidate = useThree((state) => state.invalidate)
@@ -133,7 +133,7 @@ function MonitorFog({ contentBounds }) {
     <fog
       ref={fogRef}
       attach="fog"
-      args={[SCENE_BACKGROUND_COLOR, 220, 650]}
+      args={[color, 220, 650]}
     />
   )
 }
@@ -331,6 +331,7 @@ const MonitorHitAreas = memo(function MonitorHitAreas({
 function MonitorInteractionLayer({
   entries,
   onSelectedEntityChange,
+  outlineColor,
   selectedEntityId,
 }) {
   const [hoveredEntityId, setHoveredEntityId] = useState(null)
@@ -386,7 +387,7 @@ function MonitorInteractionLayer({
       <XRayInstancedBoundsOutline
         capacity={outlineCapacity}
         matrices={outlineMatrices}
-        color="#ffffff"
+        color={outlineColor}
         objectNamePrefix="monitor-outline"
         opacity={0.94}
         thickness={3.2}
@@ -402,7 +403,11 @@ function MonitorInteractionLayer({
 function MonitorScene({
   assetRegistry,
   documents,
+  foundationColor,
+  foundationUnlit,
   onSelectedEntityChange,
+  outlineColor,
+  selectedFoundationColor,
   selectedEntityId,
 }) {
   const gridSpacing = documents.scene.environment.gridSpacing
@@ -479,7 +484,14 @@ function MonitorScene({
             {foundationBounds && (
               <TemplateFoundation
                 bounds={foundationBounds}
-                coverageOpacity={coverageOpacity}
+                color={
+                  focusActive && entity.id === selectedEntityId
+                    ? selectedFoundationColor
+                    : foundationColor
+                }
+                coverageOpacity={foundationUnlit ? 1 : coverageOpacity}
+                surfaceOpacity={foundationUnlit ? 1 : undefined}
+                unlit={foundationUnlit}
               />
             )}
             {label && bounds && (
@@ -505,6 +517,7 @@ function MonitorScene({
       <MonitorInteractionLayer
         entries={entries}
         onSelectedEntityChange={onSelectedEntityChange}
+        outlineColor={outlineColor}
         selectedEntityId={selectedEntityId}
       />
     </>
@@ -638,7 +651,9 @@ function MonitorWorld({
   onSelectedEntityChange,
   performanceMode,
   selectedEntityId,
+  theme,
 }) {
+  const sceneColors = getSceneColorScheme(theme)
   const contentBounds = useMemo(
     () => getMonitorContentBounds(documents, assetRegistry),
     [assetRegistry, documents],
@@ -676,8 +691,8 @@ function MonitorWorld({
 
   return (
     <>
-      <color attach="background" args={[SCENE_BACKGROUND_COLOR]} />
-      <MonitorFog contentBounds={contentBounds} />
+      <color attach="background" args={[sceneColors.background]} />
+      <MonitorFog color={sceneColors.background} contentBounds={contentBounds} />
       <ambientLight intensity={1} color="#e8e8e8" />
       <hemisphereLight args={['#cccccc', '#3a3a3a', 1.15]} />
       <pointLight
@@ -710,6 +725,9 @@ function MonitorWorld({
         />
       )}
       <DotGrid
+        backgroundColor={sceneColors.background}
+        baseColor={sceneColors.groundBase}
+        dotColor={sceneColors.groundDot}
         spacing={documents.scene.environment.gridSpacing}
         fadeRange={groundFadeRange}
       />
@@ -718,7 +736,11 @@ function MonitorWorld({
           assetRegistry={assetRegistry}
           deviceStatuses={deviceStatuses}
           documents={documents}
+          foundationColor={sceneColors.foundation}
+          foundationUnlit={theme === 'light'}
           onSelectedEntityChange={onSelectedEntityChange}
+          outlineColor={sceneColors.outline}
+          selectedFoundationColor={sceneColors.selectedFoundation}
           selectedEntityId={selectedEntityId}
         />
         {resolvedEnvironment?.url && (

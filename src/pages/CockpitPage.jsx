@@ -18,7 +18,7 @@ import {
   Lightning as Zap,
 } from '@phosphor-icons/react'
 import DigitalTwin from '../components/DigitalTwin'
-import { agents, cockpitKpis, flowSteps, stations } from '../data/demoData'
+import { agents, cockpitKpis, stations } from '../data/demoData'
 import { useApp } from '../context/AppContext'
 
 const kpiIcons = [RadioTower, Zap, Activity, Gauge, BatteryCharging, Gauge, CircleAlert]
@@ -31,6 +31,7 @@ const agentIcons = {
   execution: Wrench,
   validation: TestTube,
   knowledge: Books,
+  inspection: RadioTower,
 }
 
 function KpiCard({ item, index }) {
@@ -50,6 +51,7 @@ function KpiCard({ item, index }) {
 
 function TaskTimeline({ tickets }) {
   const navigate = useNavigate()
+  const { flowSteps } = useApp()
   const positions = [18, 34, 58]
   return (
     <section className="task-timeline" aria-label="当日任务时间轴">
@@ -78,14 +80,14 @@ function AgentBand({ tickets }) {
           </radialGradient>
         </defs>
       </svg>
-      {(agents || []).slice(0, 7).map((agent, index) => {
+      {(agents || []).filter((agent) => agent.id !== 'orchestrator').slice(0, 8).map((agent) => {
         const AgentIcon = agentIcons[agent.id] ?? Activity
         return (
           <article className="agent-status-card" key={agent.id} style={{ '--agent-color': agent.color || '#5291ff' }}>
             <div className="agent-status-card__copy">
               <strong>{agent.name}</strong>
-              <span className="agent-status-card__count"><b>{index === 0 ? 1 : activeCount}</b>项</span>
-              <em>{index === 0 ? '协调中' : '运行中'}</em>
+              <span className="agent-status-card__count"><b>{activeCount}</b>项</span>
+              <em>运行中</em>
             </div>
             <div className="agent-status-card__icon" aria-hidden="true">
               <AgentIcon size={20} weight="regular" color="url(#agent-card-icon-gradient)" />

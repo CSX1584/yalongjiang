@@ -15,6 +15,7 @@ import {
   DEFAULT_ENVIRONMENT,
   SolarPlantMonitor,
 } from 'solar-plant-monitor-embed'
+import { useApp } from '../context/AppContext'
 import { stations } from '../data/demoData'
 import solarPlantDocuments from '../data/solar-plant-scene-2026-08-20.json'
 
@@ -47,6 +48,7 @@ function coordinatesLabel(coordinates) {
 }
 
 export default function StationPage() {
+  const { theme } = useApp()
   const navigate = useNavigate()
   const { stationId } = useParams()
   const station = stations.find((item) => item.id === stationId) ?? stations[0]
@@ -94,6 +96,7 @@ export default function StationPage() {
               deviceStatuses={null}
               environment={DEFAULT_ENVIRONMENT}
               performanceMode
+              theme={theme}
             />
           </div>
         </section>

@@ -1,4 +1,25 @@
-export const SCENE_BACKGROUND_COLOR = '#111111'
+export const SCENE_COLOR_SCHEMES = Object.freeze({
+  dark: Object.freeze({
+    background: '#111111',
+    foundation: '#222222',
+    groundBase: '#555555',
+    groundDot: '#999999',
+    outline: '#ffffff',
+    selectedFoundation: '#3a3a3a',
+  }),
+  light: Object.freeze({
+    background: '#f4f6f8',
+    foundation: '#d1d7dd',
+    groundBase: '#e6eaee',
+    groundDot: '#bbc3cb',
+    outline: '#1677ff',
+    selectedFoundation: '#ffffff',
+  }),
+})
+
+export function getSceneColorScheme(theme) {
+  return SCENE_COLOR_SCHEMES[theme] ?? SCENE_COLOR_SCHEMES.dark
+}
 
 const EMPTY_CONTENT_RADIUS = 40
 const FOG_CONTENT_PADDING = 20

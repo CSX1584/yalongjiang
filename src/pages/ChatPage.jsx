@@ -53,7 +53,7 @@ function responseFor(text) {
     return '扎拉山 #5、#6 方阵热斑环比上升 22%。逆变器温升与风道压差增加相关，建议先清洁风道，再在满载时段复测；若温度仍高于 75°C，进入停机检查。'
   }
   if (text.includes('巡检') || text.includes('风险')) {
-    return '本期三项高优先级风险为：组串反灌 548 次、残余电流异常 8 次、组件热斑集中复发。前两项涉及直流侧安全，建议先完成 IV 诊断与现场开盖确认。'
+    return '本期三项高优先级风险为：组串反灌 12 次、残余电流异常 8 次、组件热斑集中复发。前两项涉及直流侧安全，建议先完成 IV 诊断与现场开盖确认。'
   }
   if (text.includes('今天') || text.includes('任务')) {
     return '今日建议顺序：1. 复核扎拉山 #14 逆变器残余电流；2. 跟进两河口汇流箱 04 备件与现场窗口；3. 安排扎拉山 #5/#6 方阵红外复测。'
@@ -103,7 +103,7 @@ export default function ChatPage() {
     const id = `chat-${Date.now()}`
     const next = {
       id,
-      title: '新建运维会话',
+      title: '新建对话',
       agentId: agents[0]?.id ?? 'diagnosis',
       updatedAt: nowTime(),
       messages: [{ id: `${id}-welcome`, role: 'agent', text: '我已接入场站运行、巡检和工单数据。请选择一个问题开始分析。', at: nowTime() }],
@@ -121,7 +121,7 @@ export default function ChatPage() {
     }
     const replacement = {
       id: `chat-${Date.now()}`,
-      title: '新建运维会话',
+      title: '新建对话',
       agentId: agents[0]?.id ?? 'diagnosis',
       updatedAt: nowTime(),
       messages: [],
@@ -147,7 +147,7 @@ export default function ChatPage() {
     const at = nowTime()
     updateSession(activeSession.id, (session) => ({
       ...session,
-      title: session.title === '新建运维会话' ? text.slice(0, 18) : session.title,
+      title: session.title === '新建对话' ? text.slice(0, 18) : session.title,
       updatedAt: at,
       messages: [
         ...(session.messages ?? []),

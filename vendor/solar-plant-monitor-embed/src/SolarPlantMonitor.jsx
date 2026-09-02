@@ -17,6 +17,7 @@ export function SolarPlantMonitor({
   performanceMode = false,
   mockStatusOptions = DEFAULT_MOCK_STATUS_OPTIONS,
   className = '',
+  theme = 'dark',
 }) {
   const resolvedDocuments = useMemo(
     () => documents ?? createDefaultDocuments(),
@@ -37,6 +38,7 @@ export function SolarPlantMonitor({
   return (
     <section
       className={`solar-plant-monitor ${className}`.trim()}
+      data-scene-theme={theme}
       aria-label="光伏电站三维监控场景"
     >
       <ViewportErrorBoundary>
@@ -46,6 +48,7 @@ export function SolarPlantMonitor({
           documents={resolvedDocuments}
           environment={environment}
           performanceMode={performanceMode}
+          theme={theme}
         />
       </ViewportErrorBoundary>
     </section>
