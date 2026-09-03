@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useApp } from '../context/AppContext'
+import { TicketProcess, TicketResult } from './TicketLuiTimeline'
 import {
   ActivityIcon as Activity,
   Airplane,
@@ -11,15 +12,12 @@ import {
   CheckCircle as CheckCircle2,
   ClipboardText as ClipboardCheck,
   Clock as Clock3,
-  Eye,
   FileText as FileCheck2,
   FileText,
   Gauge,
   MapPin,
   MapPinLine as MapPinned,
   PauseCircle,
-  PencilLine,
-  Plus,
   Robot as Bot,
   ShieldCheck,
   Sparkle as Sparkles,
@@ -1359,10 +1357,9 @@ function workPermitGroups(c) {
 /**
  * 节点头部的操作按钮，默认"编辑"，打开对应单据的输入项弹窗
  */
-function EditButton({ onClick, label = '编辑', icon: ActionIcon = PencilLine }) {
+function EditButton({ onClick, label = '编辑' }) {
   return (
     <button className="ticket-stage-card__edit" type="button" onClick={onClick} aria-haspopup="dialog">
-      <ActionIcon size={14} aria-hidden="true" />
       <span>{label}</span>
     </button>
   )
@@ -1448,7 +1445,6 @@ function FieldFormDialog({ type, title, fields, saved, onSave, onClose }) {
         <footer className="ticket-stage-pdf-dialog__footer">
           <span>{type} · 共 {fields.length} 项字段</span>
           <button type="button" className="ticket-stage-pdf-dialog__download" onClick={save}>
-            <Check size={14} aria-hidden="true" />
             保存修改
           </button>
         </footer>
@@ -1549,7 +1545,6 @@ function WorkPermitDialog({ c, ticket, onClose }) {
         <footer className="ticket-stage-pdf-dialog__footer">
           <span>工作票 · 共 {groups.length} 个分组</span>
           <button type="button" className="ticket-stage-pdf-dialog__download" onClick={save}>
-            <Check size={14} aria-hidden="true" />
             保存修改
           </button>
         </footer>
@@ -1625,7 +1620,6 @@ function OperationFormDialog({ c, ticket, onClose }) {
 function ViewButton({ onClick }) {
   return (
     <button className="ticket-stage-card__edit" type="button" onClick={onClick} aria-haspopup="dialog">
-      <Eye size={14} aria-hidden="true" />
       <span>查看</span>
     </button>
   )
@@ -1733,11 +1727,9 @@ function PermitReviewDialog({ c, ticket, doc, onClose }) {
             <span className="ticket-stage-doc-group__title">审批意见</span>
             <div className="ticket-stage-review-actions">
               <button type="button" className="ticket-stage-card__edit" onClick={() => setOpinion('通过')}>
-                <Check size={13} aria-hidden="true" />
                 <span>通过</span>
               </button>
               <button type="button" className="ticket-stage-card__edit" onClick={() => setOpinion(suggestionText)} disabled={!suggestionText}>
-                <Sparkles size={13} aria-hidden="true" />
                 <span>发回重填</span>
               </button>
             </div>
@@ -1753,7 +1745,6 @@ function PermitReviewDialog({ c, ticket, doc, onClose }) {
         <footer className="ticket-stage-pdf-dialog__footer">
           <span>{docInfo.type} · 只读预览</span>
           <button type="button" className="ticket-stage-pdf-dialog__download" onClick={save}>
-            <Check size={14} aria-hidden="true" />
             保存审批意见
           </button>
         </footer>
@@ -2610,34 +2601,35 @@ const CONCLUSION_ACTION_ICONS = { clipboard: ClipboardCheck, drone: Airplane, pa
 /**
  * 诊断结论卡处理建议：4 个可点击选项，动作复用 AppContext（转工单/挂起/无人机复检）
  */
-function ConclusionActions({ actions, ticket }) {
+function ConclusionActions({ actions, ticket, disabled = false }) {
   const { advanceTicket, requestDrone, showToast } = useApp()
+  const [busy, setBusy] = useState(false)
   if (!actions?.length) return null
-  const runAction = (action) => {
-    if (!ticket) return
-    if (action === 'drone') {
-      requestDrone?.(ticket.id)
-      return
+  const runAction = async (action) => {
+    if (!ticket || disabled || busy) return
+    setBusy(true)
+    try {
+      if (action === 'drone') await requestDrone?.(ticket.id)
+      else if (action === 'manual') showToast?.('已纳入人工巡检计划，下次巡检周期复核', 'success')
+      else await advanceTicket?.(ticket.id, action)
+    } catch (error) {
+      showToast?.(error?.message ?? '操作未完成，请重试')
+    } finally {
+      setBusy(false)
     }
-    if (action === 'manual') {
-      showToast?.('已纳入人工巡检计划，下次巡检周期复核', 'success')
-      return
-    }
-    Promise.resolve(advanceTicket?.(ticket.id, action)).catch((error) => showToast?.(error?.message ?? '操作未完成，请重试'))
   }
   return (
     <div className="chat-defect-card__choices">
       {actions.map((choice) => {
-        const ChoiceIcon = CONCLUSION_ACTION_ICONS[choice.icon] ?? ClipboardCheck
         return (
           <button
             className={`chat-defect-card__choice${choice.recommended ? ' is-recommended' : ''}`}
             key={choice.key}
             type="button"
+            disabled={disabled || busy || (choice.action === 'drone' && ticket?.droneRequested)}
             onClick={() => runAction(choice.action)}
           >
             <span className="chat-defect-card__choice-head">
-              <ChoiceIcon size={14} aria-hidden="true" />
               <strong>{choice.key} · {choice.label}</strong>
             </span>
             <span className="chat-defect-card__choice-desc">{choice.desc}</span>
@@ -3087,7 +3079,7 @@ function StageFour({ c, ticket, index = 4, generation, conclusion = false }) {
 
   return (
     <section className="ticket-stage-content" aria-label={`步骤 ${index} 业务内容`}>
-      <StageHeader index={index} contentIndex={4} isGenerated stageMeta={conclusion ? DIAGNOSIS_CONCLUSION_META : undefined} action={conclusion ? <EditButton icon={ClipboardCheck} label="查看缺陷单" onClick={() => setEditOpen(true)} /> : <EditButton onClick={() => setEditOpen(true)} />} />
+      <StageHeader index={index} contentIndex={4} isGenerated stageMeta={conclusion ? DIAGNOSIS_CONCLUSION_META : undefined} action={conclusion ? <EditButton label="查看缺陷单" onClick={() => setEditOpen(true)} /> : <EditButton onClick={() => setEditOpen(true)} />} />
       <div
         key={`ticket-stage-${ticket?.id ?? 'ticket'}-${index}`}
         className={`ticket-stage-content__body is-generated${ready ? ' is-revealed' : ' is-generating'}`}
@@ -3190,7 +3182,6 @@ function StageSix({ c }) {
         icon={CalendarClock}
         action={(
           <button className="ticket-stage-card__edit" type="button" onClick={() => setScheduleOpen(true)} aria-haspopup="dialog" title="打开排程日历">
-            <CalendarClock size={14} aria-hidden="true" />
             <span>排程日历</span>
           </button>
         )}
@@ -3230,7 +3221,7 @@ function StageSeven({ c }) {
 }
 
 // 两票申请：头部编辑按钮打开原来的输入项弹窗
-function StageEight({ c, ticket, index = 8 }) {
+function StageEight({ c, ticket, index = 8, compact = false }) {
   const { updateTicket, showToast } = useApp()
   const [editDoc, setEditDoc] = useState(null)
   const operationEnabled = ticket?.operationPermitEnabled !== false
@@ -3257,7 +3248,7 @@ function StageEight({ c, ticket, index = 8 }) {
           action={<EditButton onClick={() => setEditDoc('work')} />}
         />
         <div className="ticket-stage-content__body is-revealed" data-stage-index={index}>
-          <MetricGrid items={c.permits.workSummary} />
+          {compact ? <><p>{c.permits.workTitle} · {c.ids.workPermit}</p><details className="ticket-lui__document-details"><summary>查看工作票摘要</summary><MetricGrid items={c.permits.workSummary} /></details></> : <MetricGrid items={c.permits.workSummary} />}
         </div>
       </section>
       <section className="ticket-stage-content" aria-label={`步骤 ${index} 操作票申请`}>
@@ -3273,7 +3264,7 @@ function StageEight({ c, ticket, index = 8 }) {
             <span>本次作业涉及倒闸操作，生成操作票</span>
           </label>
           {operationEnabled ? (
-            <MetricGrid items={c.permits.opSummary} />
+            compact ? <><p>{c.permits.opTitle} · {c.ids.operationPermit}</p><details className="ticket-lui__document-details"><summary>查看操作票摘要</summary><MetricGrid items={c.permits.opSummary} /></details></> : <MetricGrid items={c.permits.opSummary} />
           ) : (
             <p className="ticket-stage-note">操作票为可选项：取消勾选后不生成操作票，仅提交工作票与工序单。</p>
           )}
@@ -3287,7 +3278,7 @@ function StageEight({ c, ticket, index = 8 }) {
 
 // 两票批准：头部"查看"打开只读审批弹窗（AI 建议 + 审批意见），审批动作由外部审批面板完成
 // branchRole：步骤栏会签分支过滤，'control' 只显示工作票审批卡片，'operations' 只显示操作票审批卡片
-function StageNine({ c, ticket, index, signoffMessages = [], renderMessage, branchRole = '' }) {
+function StageNine({ c, ticket, index, signoffMessages = [], renderMessage, branchRole = '', compact = false }) {
   const [reviewDoc, setReviewDoc] = useState(null)
   const operationEnabled = ticket?.operationPermitEnabled !== false
   const signoffs = ticket?.permitSignoffs ?? {}
@@ -3312,7 +3303,7 @@ function StageNine({ c, ticket, index, signoffMessages = [], renderMessage, bran
           <div className="ticket-stage-content__body is-revealed" data-stage-index={index}>
             <StageCard title="工作票" icon={FileText}>
               <div className="ticket-stage-alert ticket-stage-alert--pass"><CheckCircle2 size={15} /><div><strong>{c.stage9.workAlert[0]}</strong><p>{c.stage9.workAlert[1]}</p></div></div>
-              <MetricGrid items={c.permits.workSummary} />
+              {compact ? <details className="ticket-lui__document-details"><summary>查看工作票摘要</summary><MetricGrid items={c.permits.workSummary} /></details> : <MetricGrid items={c.permits.workSummary} />}
             </StageCard>
           </div>
         </section>
@@ -3329,7 +3320,7 @@ function StageNine({ c, ticket, index, signoffMessages = [], renderMessage, bran
           <div className="ticket-stage-content__body is-revealed" data-stage-index={index}>
             <StageCard title="操作票" icon={ClipboardCheck}>
               <div className="ticket-stage-alert"><AlertTriangle size={15} /><div><strong>{c.stage9.opAlert[0]}</strong><p>{c.stage9.opAlert[1]}</p></div></div>
-              <MetricGrid items={c.permits.opSummary} />
+              {compact ? <details className="ticket-lui__document-details"><summary>查看操作票摘要</summary><MetricGrid items={c.permits.opSummary} /></details> : <MetricGrid items={c.permits.opSummary} />}
               <div className="ticket-stage-inline-status">
                 <CheckCircle2 size={14} />
                 <span>运维负责人确认操作票后，任务进入现场执行</span>
@@ -3384,7 +3375,7 @@ function StageTwelve({ c }) {
   )
 }
 
-function StageThirteen({ c }) {
+function StageThirteen({ c, lui = false }) {
   // 人工补充的经验条目（本地追加，并入经验规则列表）
   const [customLessons, setCustomLessons] = useState([])
   const [lessonDraft, setLessonDraft] = useState('')
@@ -3397,7 +3388,7 @@ function StageThirteen({ c }) {
     setLessonDraft('')
   }
 
-  return (
+  const review = (
     <>
       <StageCard title="复盘案例已生成" icon={BrainCircuit} className="is-emphasis">
         <div className="ticket-stage-case-id"><span>案例编号</span><strong>{ids.case}</strong></div>
@@ -3435,6 +3426,9 @@ function StageThirteen({ c }) {
           </ul>
         </div>
       </StageCard>
+    </>
+  )
+  const lessons = (
       <StageCard title="经验规则沉淀" icon={Sparkles}>
         <ul className="review-lessons">
           {c.stage13.lessons.map((item) => (
@@ -3463,11 +3457,97 @@ function StageThirteen({ c }) {
             placeholder="补充一条本次任务的真实经验"
             aria-label="补充经验条目"
           />
-          <button type="button" disabled={!lessonDraft.trim()} onClick={addLesson}><Plus size={14} />添加</button>
+          <button type="button" disabled={!lessonDraft.trim()} onClick={addLesson}>添加</button>
         </div>
       </StageCard>
-    </>
   )
+  return lui ? <>
+    <TicketProcess title="过程复盘" note="SLA · 诊断验证 · 现场问答">{review}</TicketProcess>
+    <TicketResult title="复盘案例已生成">
+      <p className="ticket-lui__lead">{c.stage13.accuracy.conclusion}</p>
+      <p>{c.stage13.accuracy.verified}</p>
+      <p className="ticket-lui__caption">{ids.case} · {c.stage13.similar}</p>
+      {lessons}
+    </TicketResult>
+  </> : <>{review}{lessons}</>
+}
+
+// 只重组右侧页签的阅读顺序，证据、票证和业务动作复用原组件。
+function LuiStageContent({ c, ticket, step, index, contentIndex, generation, actions, disabled, branchRole }) {
+  const [documentOpen, setDocumentOpen] = useState(null)
+  let nodes
+  if (step?.combined === 'diagnose-defect') {
+    nodes = <>
+      <TicketProcess title="异常触发" note="异常证据 · 设备定位">
+        {c.key === 'reflux' ? <RefluxTriggerSummary /> : <DiagnosisEvidence items={c.stage2.diagnosis} />}
+      </TicketProcess>
+      <TicketProcess title="数据收集" note="6 类图表"><DataCollectionPanel collection={c.collection} /></TicketProcess>
+      <TicketProcess title="根因分析" note="候选原因 · 交叉验证"><RootCauseFlow flow={c.rootCauseFlow} /></TicketProcess>
+      <TicketResult title="诊断结论" action={<EditButton label="查看缺陷单" onClick={() => setDocumentOpen('defect')} />} actions={<ConclusionActions actions={c.conclusionActions} ticket={ticket} disabled={disabled} />}>
+        {c.conclusionPanel ? <div className="ticket-lui__diagnosis-summary"><MetricGrid items={c.conclusionPanel.summary} /></div> : <>
+          <p className="ticket-lui__lead">{c.stage2.conclusion[0]}</p><p>{c.stage2.conclusion[1]}</p>
+          <p><strong>{c.defect.measure[0]}</strong> · {c.defect.measure[1]}</p>
+        </>}
+        <details className="ticket-lui__document-details">
+          <summary>查看缺陷与处置依据</summary>
+          <p><strong>{c.defect.info[0]}</strong> · {c.defect.info[1]}</p>
+          <MetricGrid items={c.defect.metrics} /><KeyValueList items={c.defect.cost} />
+          {c.conclusionPanel?.options.map((option) => <div className="ticket-lui__option-note" key={option.title}><strong>{option.title} · {option.duration}</strong>{option.lines.map((line) => <p key={line}>{line}</p>)}</div>)}
+        </details>
+      </TicketResult>
+    </>
+  } else if (step?.combined === 'order-schedule') {
+    nodes = <>
+      <TicketProcess title="工单编制" note="工作步骤 · 措施与验收"><StageFiveBody c={c} /></TicketProcess>
+      <TicketProcess title="排程与资源校验" note="人员 · 资源 · 作业窗口"><StageSix c={c} /><StageSeven c={c} /></TicketProcess>
+      <TicketResult title={disabled ? '工单核定记录' : '工单待核定'} action={<EditButton label="编辑工单" onClick={() => setDocumentOpen('work-order')} />} actions={actions}>
+        <p className="ticket-lui__lead">{c.mainTask}</p>
+        <MetricGrid items={c.stage5.metrics} />
+        <p><strong>验收标准</strong> · {c.stage5.acceptance}</p>
+      </TicketResult>
+    </>
+  } else if (contentIndex === 8) {
+    nodes = <>
+      <TicketProcess title="安全票证准备" note="关联工单 · 工序与安全措施"><KeyValueList items={c.stage7.summary} /><CheckList items={c.stage5.checklist} /></TicketProcess>
+      <TicketResult title={disabled ? '两票申请记录' : '两票已准备，请核对并提交'} actions={actions}><StageEight c={c} ticket={ticket} index={index} compact /></TicketResult>
+    </>
+  } else if (contentIndex === 9) {
+    nodes = <>
+      <TicketProcess title="票证审核" note="工作票 · 工序单 · 操作票"><MetricGrid items={c.permits.workSummary} />{ticket.operationPermitEnabled !== false && <MetricGrid items={c.permits.opSummary} />}</TicketProcess>
+      <TicketResult title="作业审批意见" actions={actions}>
+        <StageNine c={c} ticket={ticket} index={index} branchRole={branchRole} compact />
+        {ticket.operationPermitEnabled !== false && !ticket.permitSignoffs?.control && <p className="ticket-lui__caption">工作许可人先审批工作票与工序单，再由运维负责人审批操作票。</p>}
+      </TicketResult>
+    </>
+  } else if (contentIndex === 10) {
+    nodes = <>
+      <TicketProcess title="现场执行记录" note="导航 · 到场 · 检修交待"><StageTen c={c} /></TicketProcess>
+      <TicketResult title="现场执行进展">
+        <p className="ticket-lui__lead">{c.mainTask}</p>
+        <CheckList items={c.stage10.checklist.slice(-2)} />
+      </TicketResult>
+    </>
+  } else if (contentIndex === 11) {
+    nodes = <>
+      <TicketProcess title="复测数据比对" note="处置前后关键指标"><ComparisonTable rows={c.stage11.comparison} /></TicketProcess>
+      <TicketResult title="复测验证通过"><p className="ticket-lui__lead">全部关键指标满足验收标准，建议进入关单批准。</p><MetricGrid items={c.stage11.metrics} /></TicketResult>
+    </>
+  } else if (contentIndex === 12) {
+    nodes = <>
+      <TicketProcess title="证据汇总与验收" note="现场记录 · 票证 · 复测"><CheckList items={c.stage12.evidence} /><p>{c.stage12.acceptance}</p></TicketProcess>
+      <TicketResult title="关单结论" actions={actions}><MetricGrid items={c.stage12.metrics} /><KeyValueList items={c.stage12.notice} /></TicketResult>
+    </>
+  } else if (contentIndex === 13) {
+    nodes = <StageThirteen c={c} lui />
+  }
+  return <div className="ticket-lui">
+    <ol className="ticket-lui__timeline" aria-label={`${step?.name}分析与结果`}>
+      {!generation.ready ? <li className="ticket-lui__loading"><StageGeneration label={generation.label} detail={generation.detail} progress={generation.progress} /></li> : nodes}
+    </ol>
+    {disabled && step?.advanceMode === 'approval' && <p className="ticket-lui__readonly">当前页签仅供回看，处置请进入当前待办步骤。</p>}
+    {documentOpen === 'defect' && <DefectFormDialog c={c} ticket={ticket} onClose={() => setDocumentOpen(null)} />}
+    {documentOpen === 'work-order' && <WorkOrderFormDialog c={c} ticket={ticket} onClose={() => setDocumentOpen(null)} />}
+  </div>
 }
 
 function StageFallback({ ticket, index }) {
@@ -3487,7 +3567,7 @@ function StageFallback({ ticket, index }) {
  * the 13-node business story in one small step switch; progress and approval
  * state remain owned by AppContext/TicketPage.
  */
-export function TicketStageContent({ step, ticket, selectedStep, currentStep, completed = false, signoffMessages = [], renderMessage, branchRole = '' }) {
+export function TicketStageContent({ step, ticket, selectedStep, currentStep, completed = false, signoffMessages = [], renderMessage, branchRole = '', presentation, actions, actionsDisabled = false }) {
   const [workOrderDocOpen, setWorkOrderDocOpen] = useState(false)
   const stepObject = typeof step === 'object' && step !== null ? step : null
   const index = Math.max(1, stepNumber(step ?? selectedStep ?? currentStep))
@@ -3501,6 +3581,9 @@ export function TicketStageContent({ step, ticket, selectedStep, currentStep, co
     ticket?.id,
     Boolean(GENERATION_META[contentIndex] && !isApprovalNode && index === activeStep && !completed),
   )
+  if (presentation === 'lui' && (stepObject?.combined || contentIndex >= 8)) {
+    return <LuiStageContent c={c} ticket={ticket} step={stepObject} index={index} contentIndex={contentIndex} generation={generation} actions={actions} disabled={actionsDisabled} branchRole={branchRole} />
+  }
   let content
   // 合并流程的组合节点：工单+排程 节点单独渲染
   if (!stepObject?.combined) {

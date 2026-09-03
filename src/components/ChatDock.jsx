@@ -176,7 +176,7 @@ function ChatApprovalCard({ ticketId, stepId }) {
       <div className="chat-defect-card">
         <div className="chat-defect-card__head">
           <strong>{ticket.title}</strong>
-          <span className="chat-defect-card__status">当前步骤 · {step.name} 待{meta.name}会签</span>
+          <span className="chat-defect-card__status">{step.name} 待{meta.name}会签</span>
         </div>
         <div className="chat-defect-card__rows">
           <div className="chat-defect-card__row">
@@ -207,7 +207,7 @@ function ChatApprovalCard({ ticketId, stepId }) {
     <div className="chat-defect-card">
       <div className="chat-defect-card__head">
         <strong>{ticket.title}</strong>
-        <span className="chat-defect-card__status">当前步骤 · {step.name} 待处理</span>
+        <span className="chat-defect-card__status">{step.name} 待处理</span>
       </div>
       <div className="chat-defect-card__rows">
         <div className="chat-defect-card__row">

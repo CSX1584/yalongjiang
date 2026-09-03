@@ -250,14 +250,6 @@ export default function ReasoningChain({
       {open && (
       <div className="reasoning-chain__canvas" ref={canvasRef}>
         <svg className="reasoning-chain__edges" aria-hidden="true">
-          <defs>
-            <marker id="reasoning-arrow" markerHeight="6" markerWidth="6" orient="auto" refX="5" refY="3">
-              <path d="M0,0 L6,3 L0,6 Z" />
-            </marker>
-            <marker id="reasoning-arrow-reject" markerHeight="6" markerWidth="6" orient="auto" refX="5" refY="3">
-              <path d="M0,0 L6,3 L0,6 Z" />
-            </marker>
-          </defs>
           {paths.map((edge) => {
             const isReject = NODE_LOOKUP[edge.to]?.tone === 'reject'
             const lit = related?.has(edge.from) && related?.has(edge.to)
@@ -266,7 +258,6 @@ export default function ReasoningChain({
                 className={`reasoning-edge${isReject ? ' reasoning-edge--reject' : ''}${related ? (lit ? ' is-lit' : ' is-dim') : ''}`}
                 d={edge.d}
                 key={edge.id}
-                markerEnd={isReject ? 'url(#reasoning-arrow-reject)' : 'url(#reasoning-arrow)'}
               />
             )
           })}

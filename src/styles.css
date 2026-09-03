@@ -317,9 +317,9 @@ a:focus-visible {
 
 .brand-mark {
   display: grid;
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
   place-items: center;
   border: 0;
   background: transparent;
@@ -327,8 +327,8 @@ a:focus-visible {
 
 .brand-mark img {
   display: block;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
 }
 
 .brand-copy {
@@ -1250,7 +1250,7 @@ a:focus-visible {
 /* 版本2 任务中心卡片：与对话窗同款背景，底部自带紫色渐变光晕（双类选择器压过下方 .sidebar 主题组规则） */
 .sidebar.sidebar--v2 {
   background-color: var(--ops-surface-main);
-  background-image: url('/chat/smart-assistant-background.jpg');
+  background-image: url('/chat/smart-assistant-background.png');
   background-position: center bottom;
   background-repeat: no-repeat;
   background-size: 100% auto;
@@ -1261,7 +1261,7 @@ a:focus-visible {
   gap: 14px;
   padding-top: 14px;
   background-color: var(--ops-surface-main);
-  background-image: url('/chat/smart-assistant-background.jpg');
+  background-image: url('/chat/smart-assistant-background.png');
   background-position: center bottom;
   background-repeat: no-repeat;
   background-size: 100% auto;
@@ -1339,7 +1339,7 @@ a:focus-visible {
 
 .assistant-notice__bubble {
   margin: 4px 0 0;
-  padding: 8px 12px;
+  padding: 12px;
   border: 1px solid var(--ops-border);
   border-radius: 4px 12px 12px 12px;
   background: rgba(var(--ops-invert-rgb), 0.04);
@@ -1402,7 +1402,7 @@ a:focus-visible {
   flex-direction: column;
   gap: 2px;
   margin-top: 8px;
-  padding: 8px 10px;
+  padding: 10px;
   border: 1px solid var(--ops-border);
   border-radius: 8px;
   background: rgba(var(--ops-invert-rgb), 0.03);
@@ -1460,10 +1460,11 @@ a:focus-visible {
   white-space: nowrap;
 }
 
-/* 气泡内 KPI 卡片压扁：不继承总览大卡的 min-height/大 padding，消除下方留白 */
-.assistant-notice__bubble .kpi-card {
+/* 对话 KPI 卡片四边等距，不继承总览大卡的高度和内边距。 */
+.assistant-notice__bubble .kpi-card,
+.kpi-card-grid .kpi-card {
   min-height: 0;
-  padding: 7px 9px;
+  padding: 9px;
 }
 
 .kpi-card__trend.is-positive {
@@ -1477,10 +1478,18 @@ a:focus-visible {
 /* 对话流缺陷单确认卡：故障原因 / 处理代价 / 内嵌操作按钮 */
 .chat-defect-card {
   margin-top: 6px;
-  padding: 10px 12px;
+  padding: 12px;
   border: 1px solid var(--ops-border);
   border-radius: 10px;
-  background: var(--ops-surface-health);
+  background-color: var(--ops-surface-health);
+  background-image: url('/chat/card-gradient-dark.png');
+  background-position: left bottom;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.chat-dock .chat-defect-card {
+  background-color: var(--ops-surface-diagnostic);
 }
 
 .chat-defect-card__head {
@@ -1541,7 +1550,7 @@ a:focus-visible {
 .chat-defect-card__actions button {
   padding: 5px 12px;
   border: 1px solid var(--ops-border);
-  border-radius: 6px;
+  border-radius: 999px;
   background: transparent;
   color: var(--ops-text-secondary);
   font-family: inherit;
@@ -1566,6 +1575,7 @@ a:focus-visible {
   flex: 0 0 auto;
   flex-direction: column;
   gap: 0;
+  margin: 8px 0 16px;
   padding: 0;
 }
 
@@ -1596,7 +1606,19 @@ a:focus-visible {
 /* 输入框只有 文本域 + 发送 两列，发送按钮靠右，与对话窗输入框一致（双类选择器压过 .ticket-composer 三列基础规则） */
 .ticket-composer.sidebar-composer__box {
   grid-template-columns: minmax(0, 1fr) auto;
-  margin: 8px 16px 16px;
+  margin: 0 16px;
+  gap: 8px;
+  padding: 8px;
+}
+
+.sidebar-composer .ticket-composer.sidebar-composer__box textarea {
+  min-height: 60px;
+  max-height: none;
+  font-size: 14px;
+}
+
+.sidebar-composer :is(.composer-mode__trigger, .composer-toolbar__model) {
+  font-size: 13px;
 }
 
 textarea::placeholder,
@@ -1707,7 +1729,7 @@ input::placeholder {
   display: block;
   width: 100%;
   margin-bottom: 4px;
-  padding: 13px 12px;
+  padding: 12px;
   border: 1px solid transparent;
   border-radius: 4px;
   background: var(--ops-surface-main);
@@ -2600,8 +2622,8 @@ input::placeholder {
 }
 
 .scene-tools .map-mode-switch button.is-active {
-  color: #111416;
-  background: #eef2f3;
+  color: var(--ops-text-secondary);
+  background: var(--ops-surface-action);
 }
 
 .mapbox-twin-canvas {
@@ -4349,7 +4371,7 @@ input::placeholder {
   grid-template-rows: 72px minmax(0, 1fr) auto;
   border-left: 1px solid var(--ops-border);
   background-color: var(--ops-surface-main);
-  background-image: url('/chat/smart-assistant-background.jpg');
+  background-image: url('/chat/smart-assistant-background.png');
   background-position: center bottom;
   background-repeat: no-repeat;
   background-size: 100% auto;
@@ -4425,6 +4447,8 @@ input::placeholder {
   min-height: 0;
   padding: 20px 18px;
   overflow-y: auto;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 32px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 32px), transparent 100%);
 }
 
 .ticket-qa__empty {
@@ -4500,7 +4524,7 @@ input::placeholder {
 
 .ticket-qa__bubble {
   max-width: 100%;
-  padding: 10px 12px;
+  padding: 12px;
   border: 1px solid var(--ops-border-soft);
   border-radius: 4px 10px 10px 10px;
   background: var(--ops-surface-diagnostic);
@@ -4555,6 +4579,10 @@ input::placeholder {
 
 .chat-think.is-open .chat-think__chevron {
   transform: rotate(180deg);
+}
+
+.chat-think.is-open .chat-think__head {
+  padding: 10px;
 }
 
 .chat-think__lines {
@@ -4615,6 +4643,13 @@ input::placeholder {
 
 .chat-dock .ticket-composer.ticket-qa__composer {
   margin: 8px 16px 16px;
+  padding: 8px;
+  gap: 8px;
+}
+
+.chat-dock .ticket-qa__composer textarea {
+  min-height: 60px;
+  max-height: none;
 }
 
 .ticket-page .ticket-composer.ticket-qa__composer {
@@ -6968,7 +7003,7 @@ input::placeholder {
   display: flex;
   gap: 9px;
   padding: 12px !important;
-  border: 1px solid rgba(var(--ops-warning-rgb), 0.16) !important;
+  border: 1px solid var(--ops-border-soft);
   border-radius: 4px;
   background: rgba(var(--ops-warning-rgb), 0.05);
   color: var(--ops-warning);
@@ -7370,7 +7405,7 @@ input::placeholder {
 }
 
 .message-bubble {
-  padding: 12px 14px;
+  padding: 14px;
   border: 1px solid var(--ops-border-soft);
   border-radius: 4px;
   background: var(--ops-surface-health);
@@ -7947,7 +7982,7 @@ input::placeholder {
   padding: 8px 10px;
   border: 1px solid var(--ops-border-soft);
   border-radius: 8px;
-  background: var(--ops-surface-action);
+  background: var(--ops-bg-shell);
   color: var(--ops-text-primary);
   font-family: inherit;
   font-size: 12px;
@@ -9671,7 +9706,7 @@ input::placeholder {
 
 @media (max-width: 1640px) {
   :root { --ops-sidebar-width: 320px; }
-  .topbar { grid-template-columns: minmax(310px, 1fr) auto minmax(390px, 1fr); }
+  .topbar { grid-template-columns: minmax(310px, 1fr) auto minmax(76px, 1fr); }
 /* ===== 无用代码（待确认后删除） =====
   .filter-scroll { gap: 1px; }
 ===== 无用代码结束 ===== */
@@ -9686,7 +9721,7 @@ input::placeholder {
 }
 
 @media (max-width: 1380px) {
-  .topbar { grid-template-columns: minmax(300px, 1fr) auto minmax(360px, 1fr); }
+  .topbar { grid-template-columns: minmax(300px, 1fr) auto minmax(76px, 1fr); }
   .brand-copy span { max-width: 180px; }
   .agent-band { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
@@ -10021,7 +10056,7 @@ button {
 .ticket-stage-pdf-dialog__body {
   min-height: 0;
   padding: 14px;
-  background: var(--ops-bg-canvas);
+  background: var(--ops-surface-health);
 }
 
 .ticket-stage-pdf-dialog__body iframe {
@@ -10390,8 +10425,8 @@ button {
 [data-theme='dark'] .topnav-dropdown > button.is-active {
   border-bottom-color: transparent;
   border-radius: 999px;
-  background: var(--ops-nav-active);
-  color: #fff;
+  background: #fff;
+  color: #111;
 }
 
 [data-theme='dark'] .map-station-marker .marker-pin {
@@ -10451,20 +10486,6 @@ button {
 .agent-menu button.is-active,
 .session-actions button {
   background: var(--ops-surface-raised);
-}
-
-.role-options button:hover,
-.role-options button.is-selected,
-.scene-tools button:hover,
-.scene-tools button.is-active,
-.fallback-station-marker.is-selected,
-.work-order-list button:hover,
-.session-row:hover,
-.session-row.is-active,
-.chat-composer,
-.parameter-grid article.warning,
-.recommendation-block {
-  border-color: var(--ops-border) !important;
 }
 
 /*dead*/.settings-note/*dead-end*/,/*dead*/
@@ -10786,8 +10807,7 @@ button {
 
 .ticket-stage-doc-group + .ticket-stage-doc-group {
   margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid var(--ops-border-soft);
+  padding-top: 0;
 }
 
 .ticket-stage-doc-group__title {
@@ -10918,10 +10938,17 @@ button {
   padding: 0 2px 2px;
 }
 
+.composer-toolbar__icon,
+.composer-mode__trigger,
+.composer-toolbar__model,
+.composer-toolbar .ticket-composer__send {
+  box-sizing: border-box;
+  height: 32px;
+}
+
 .composer-toolbar__icon {
   display: grid;
-  width: 28px;
-  height: 28px;
+  width: 32px;
   place-items: center;
   border: 0;
   border-radius: 6px;
@@ -10952,14 +10979,17 @@ button {
   cursor: pointer;
 }
 
+.sidebar-composer .composer-toolbar__model {
+  margin-right: 0;
+}
+
 .composer-toolbar__model option {
   background: #232628;
   color: var(--ops-text-primary);
 }
 
 .composer-toolbar .ticket-composer__send {
-  width: 30px;
-  height: 30px;
+  width: 32px;
 }
 
 /* 常驻模式按钮：默认「新建缺陷单」，选中后显示对应模式名 */
@@ -11148,14 +11178,6 @@ button {
   opacity: 0.12;
 }
 
-#reasoning-arrow path {
-  fill: #8b959e;
-}
-
-#reasoning-arrow-reject path {
-  fill: #4d545c;
-}
-
 .reasoning-col {
   position: relative;
   z-index: 1;
@@ -11338,7 +11360,7 @@ button {
   align-items: center;
   gap: 7px;
   margin-top: 8px;
-  padding: 8px 14px;
+  padding: 14px;
   border: 1px solid var(--ops-border);
   border-radius: 10px;
   background: var(--ops-surface-diagnostic);
@@ -11559,7 +11581,7 @@ button {
   display: grid;
   gap: 6px;
   margin-bottom: 8px;
-  padding: 10px 12px;
+  padding: 12px;
   border: 1px solid var(--ops-border);
   border-radius: 10px;
   background: var(--ops-surface-health);
@@ -11608,7 +11630,7 @@ button {
 .chat-defect-card__choice {
   display: grid;
   gap: 3px;
-  padding: 8px 10px;
+  padding: 10px;
   border: 1px solid var(--ops-border);
   border-radius: 8px;
   background: transparent;
@@ -11632,7 +11654,6 @@ button {
 }
 
 .chat-defect-card__choice-desc {
-  padding-left: 20px;
   color: var(--ops-text-tertiary);
   font-size: 10px;
   line-height: 1.5;
@@ -11658,10 +11679,12 @@ button {
 .ticket-tabs-bar {
   grid-row: 1;
   display: flex;
+  box-sizing: border-box;
+  height: 42px;
   align-items: flex-end;
   gap: 10px;
   padding: 6px 12px 0;
-  border-bottom: 1px solid var(--ops-border);
+  border-bottom: 0;
   background: var(--ops-surface-main);
 }
 
@@ -11675,24 +11698,25 @@ button {
   scrollbar-width: thin;
 }
 
-/* 页签：浏览器标签式，从左到右排列 */
+/* 页签：透明排列，当前项用渐变下划线强调 */
 .ticket-tabs__tab {
   position: relative;
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  border: 1px solid transparent;
-  border-bottom: none;
-  border-radius: 8px 8px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .ticket-tabs__tab-main {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 8px 7px 12px;
+  padding: 10px 8px 12px 12px;
   border: none;
-  border-radius: 8px 8px 0 0;
+  border-radius: 0;
   background: transparent;
   color: var(--ops-text-secondary);
   font-size: 12px;
@@ -11701,17 +11725,28 @@ button {
 }
 
 .ticket-tabs__tab:hover {
-  background: var(--ops-surface-inner);
+  background: transparent;
 }
 
 .ticket-tabs__tab.is-active {
-  border-color: var(--ops-border-soft);
-  background: var(--ops-surface-inner);
+  border: 0;
+  background: transparent;
 }
 
 .ticket-tabs__tab.is-active .ticket-tabs__tab-main {
   color: var(--ops-text-primary);
   font-weight: 600;
+}
+
+.ticket-tabs__tab.is-active .ticket-tabs__tab-main::after {
+  position: absolute;
+  right: 8px;
+  bottom: 0;
+  left: 12px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--ops-ai-tint-text), var(--ops-accent-primary));
+  content: '';
 }
 
 .ticket-tabs__tab-name {
@@ -11784,6 +11819,7 @@ button {
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   padding: 18px 22px;
   background: var(--ops-surface-main);
 }
@@ -12472,7 +12508,7 @@ button {
   flex: 1;
   padding: 8px 12px;
   border: 1px solid var(--ops-border);
-  border-radius: 6px;
+  border-radius: 999px;
   background: transparent;
   font-family: inherit;
   font-size: 13px;
@@ -12567,6 +12603,92 @@ button {
 
 .ticket-page--reasoning { grid-template-rows: minmax(0, 1fr) auto; }
 .ticket-tab-panel .ticket-thread__card { max-width: 1120px; margin: 0 auto; }
+.ticket-lui { max-width: 920px; margin: 0 auto; padding: 6px 12px 32px; color: var(--ops-text-secondary); }
+.ticket-lui__timeline { list-style: none; margin: 0; padding: 0; }
+.ticket-lui__timeline > li { position: relative; padding: 0 0 16px 40px; min-width: 0; }
+.ticket-lui__timeline > li:not(:last-child)::before { content: ''; position: absolute; top: 25px; bottom: -3px; left: 12px; border-left: 1px dashed var(--ops-text-tertiary); opacity: .5; }
+.ticket-lui__node { position: absolute; left: -4.5px; top: 0; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: var(--ops-text-tertiary); background: var(--ops-surface-health); }
+.ticket-lui__process > .ticket-lui__node { color: var(--ops-text-primary); }
+.ticket-lui__process > details > summary { display: flex; align-items: center; gap: 14px; width: fit-content; max-width: 100%; min-height: 34px; padding: 6px 12px 6px 14px; box-sizing: border-box; border: 1px solid var(--ops-border); border-radius: 999px; color: var(--ops-text-secondary); background: var(--ops-surface-health); font-size: 12px; cursor: pointer; list-style: none; }
+.ticket-lui__process > details > summary::-webkit-details-marker { display: none; }
+.ticket-lui__process > details > summary small { color: var(--ops-text-tertiary); font-size: 11px; }
+.ticket-lui__process > details > summary svg { flex: 0 0 auto; color: var(--ops-text-tertiary); transition: transform 140ms ease; }
+.ticket-lui__process > details[open] > summary svg { transform: rotate(180deg); }
+.ticket-lui summary:hover { color: var(--ops-text-primary); }
+.ticket-lui summary:focus-visible { outline: 2px solid var(--ops-accent-primary); outline-offset: 3px; }
+.ticket-lui__evidence { display: grid; gap: 14px; margin: 14px 0 4px; padding: 16px; border: 1px solid var(--ops-border-soft); border-radius: 8px; background: var(--ops-surface-health); min-width: 0; overflow-x: auto; }
+.ticket-lui__result { margin-top: 10px; }
+.ticket-lui__result > .ticket-lui__node { color: var(--ops-ai-tint-text); background: var(--ops-ai-tint-bg); }
+.ticket-lui__result > section {
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--ops-surface-diagnostic);
+}
+.ticket-lui__heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 34px; margin-bottom: 12px; }
+.ticket-lui__heading h3 { margin: 0; font-size: 17px; font-weight: 600; color: var(--ops-text-primary); }
+.ticket-lui__answer { display: grid; gap: 10px; line-height: 1.65; font-size: 13px; }
+.ticket-lui__answer p { margin: 0; }
+.ticket-lui__lead { font-size: 16px; font-weight: 500; color: var(--ops-text-primary); }
+.ticket-lui__caption, .ticket-lui__readonly { color: var(--ops-text-tertiary); font-size: 12px; }
+.ticket-lui__readonly { margin: 12px 0 0 40px; }
+.ticket-lui__document-details { font-size: 12px; color: var(--ops-text-secondary); }
+.ticket-lui__document-details > summary { width: fit-content; cursor: pointer; padding: 3px 0; color: var(--ops-text-tertiary); }
+.ticket-lui__document-details[open] > summary { margin-bottom: 12px; }
+.ticket-lui__document-details > .ticket-stage-metrics { margin-bottom: 12px; }
+.ticket-lui__option-note { margin-top: 12px; }
+.ticket-lui__option-note p { margin: 4px 0 0; }
+.ticket-lui__actions { margin-top: 20px; padding-top: 16px; border-top: 0; }
+.ticket-lui .approval-panel { position: static; padding: 0; margin: 0; background: none; border: 0; box-shadow: none; }
+.ticket-lui .approval-panel__decision { padding: 0; }
+.ticket-lui .approval-panel__actions { justify-content: flex-start; }
+.ticket-lui .chat-defect-card__choices { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ticket-lui .chat-defect-card__choice { min-width: 0; padding: 12px; border-radius: 6px; background: transparent; }
+.ticket-lui .chat-defect-card__choice-desc { font-size: 14px; line-height: 1.6; }
+.ticket-lui .chat-defect-card__choice.is-recommended { background: color-mix(in srgb, var(--ops-accent-primary) 9%, transparent); border-color: color-mix(in srgb, var(--ops-accent-primary) 42%, transparent); }
+.ticket-lui .chat-defect-card__choice:disabled { opacity: .5; cursor: default; }
+.ticket-lui .ticket-stage-metric { background: none; border: 0; border-left: 1px solid var(--ops-border); border-radius: 0; padding: 0 12px; min-height: 0; }
+.ticket-lui .ticket-stage-metric strong { font-size: 15px; line-height: 1.6; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.ticket-lui .ticket-stage-metric--wide { padding: 0; border: 0; }
+.ticket-lui .ticket-stage-metric--wide strong { font-size: 16px; }
+.ticket-lui__diagnosis-summary .ticket-stage-metrics { gap: 8px; }
+.ticket-lui__diagnosis-summary .ticket-stage-metric:not(.ticket-stage-metric--wide) { min-height: 72px; padding: 12px 14px; border: 0; border-radius: 8px; background: var(--ops-surface-inner); }
+.ticket-lui__diagnosis-summary .ticket-stage-metric.is-warning { background: rgba(var(--ops-warning-rgb), 0.14); }
+.ticket-lui__diagnosis-summary .ticket-stage-metric--wide {
+  padding: 0;
+  background: transparent;
+}
+.ticket-lui__answer .ticket-stage-content {
+  margin: 0;
+  padding: 16px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--ops-surface-inner);
+  box-shadow: none;
+}
+.ticket-lui__answer .ticket-stage-content + .ticket-stage-content { margin-top: 6px; }
+.ticket-lui__answer .ticket-stage-content__header { padding: 0 0 12px; margin: 0; border: 0; }
+.ticket-lui__answer .ticket-stage-content__header h3 { font-size: 13px; font-weight: 500; }
+.ticket-lui__answer .ticket-stage-content__body {
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--ops-surface-main);
+}
+.ticket-lui__answer .ticket-stage-card { background: none; border: 0; padding: 0; box-shadow: none; }
+.ticket-lui__answer .ticket-stage-content .ticket-stage-card__heading { display: none; }
+.ticket-lui__answer .ticket-stage-alert { padding: 12px; }
+.ticket-lui__answer .ticket-stage-doc-toggle {
+  border-color: transparent;
+  background: var(--ops-surface-health);
+}
+.ticket-lui__answer .ticket-lui__document-details {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--ops-surface-health);
+}
+.ticket-lui__answer .ticket-lui__document-details > summary { padding: 0; }
+.ticket-lui__answer .ticket-stage-content__body.is-revealed > * { animation: none; }
+@media (prefers-reduced-motion: reduce) { .ticket-lui__process > details > summary svg { transition: none; } }
 .ticket-tab-panel .ticket-thread__skeleton { max-width: 1120px; margin: 0 auto; }
 .ticket-tabs__tab-main:focus-visible,
 .ticket-tabs__tab-close:focus-visible,
@@ -12987,7 +13109,8 @@ button {
   box-shadow: none;
 }
 
-[data-theme='light'] .app-shell.is-v2 :is(.sidebar, .chat-dock) {
+/* 明暗主题共用的壳层留白：保持顶栏、左侧轨道和内容区的分组间距一致。 */
+[data-theme] .app-shell.is-v2 :is(.sidebar, .chat-dock) {
   border-top: 2px solid var(--ops-bg-canvas);
 }
 
@@ -13059,15 +13182,15 @@ button {
   border-right: 0;
 }
 
-[data-theme='light'] .sidebar-v2-wrap {
+[data-theme] .sidebar-v2-wrap {
   gap: 1px;
 }
 
-[data-theme='light'] .app-shell.is-v2.sidebar-with-rail {
+[data-theme] .app-shell.is-v2.sidebar-with-rail {
   grid-template-columns: calc(var(--ops-chat-dock-width) + var(--ops-sidebar-mini-width) + 1px) minmax(0, 1fr);
 }
 
-[data-theme='light'] .app-shell.is-v2.sidebar-with-rail .chat-dock {
+[data-theme] .app-shell.is-v2.sidebar-with-rail .chat-dock {
   margin-left: calc(var(--ops-sidebar-mini-width) + 1px);
 }
 
@@ -13085,7 +13208,7 @@ button {
   background: var(--ops-surface-main);
 }
 
-[data-theme='light'] :is(.ops-page, .ticket-page, .defect-page) {
+[data-theme] :is(.ops-page, .ticket-page, .defect-page) {
   padding-top: 2px;
   padding-left: 2px;
 }
@@ -13097,6 +13220,10 @@ button {
 [data-theme='light'] .chat-defect-card,
 [data-theme='light'] .chat-defect-card__choice {
   border: 0;
+}
+
+[data-theme='light'] .chat-defect-card {
+  background-image: url('/chat/card-gradient-light.png');
 }
 
 [data-theme='light'] .kpi-label svg {
@@ -13230,4 +13357,213 @@ button {
 
 [data-theme='light'] .has-badge .notification-badge {
   border: 0;
+}
+
+/* 明暗模式共用：用现有填充和留白分组，保留表单、焦点及图表的功能性线条。 */
+[data-theme] :is(
+  .topbar, .sidebar, .page-toolbar, .ticket-page__header,
+  .kpi-card, .scene-toolbar, .task-timeline, .agent-status-card,
+  .agent-flow__canvas, .agent-flow__edge-label, .agent-flow__lock,
+  .defect-page__card, .defect-list, .knowledge-card, .metric-card,
+  .report-list-row, .report-row-expand, .diagnosis-card, .insight-banner,
+  .station-metrics article, .station-overview-link, .parameter-grid article,
+  .trend-card, .event-panel, .device-alert-list article, .work-order-list button,
+  .recommendation-block, .ai-polish-card, .evidence-drawer__summary,
+  .assistant-notice__bubble, .assistant-notice__avatar, .message-avatar,
+  .message-bubble, .ticket-qa__avatar, .ticket-qa__bubble, .chat-think,
+  .chat-defect-card, .ticket-message__body, .ticket-message__icon,
+  .ticket-message__evidence, .ticket-thread__scope, .ticket-thread__skeleton span,
+  .ticket-stage-content, .ticket-stage-card, .ticket-stage-card.is-emphasis,
+  .ticket-stage-metric, .ticket-stage-callout, .ticket-stage-suggestion,
+  .ticket-stage-generation, .ticket-stage-content__mode, .ticket-stage-tag,
+  .ticket-stage-review-result, .ticket-stage-doc-field__review,
+  .ticket-stage-review--pass, .ticket-stage-review--warn,
+  .ticket-stage-acceptance, .ticket-stage-alert, .ticket-stage-phase-grid > div,
+  .ticket-stage-route, .ticket-stage-route__map, .review-sla li,
+  .review-qa li, .diagnosis-evidence__item, .collect-chart,
+  .kola-checklist, .drone-map, .ticket-lui__evidence,
+  .ticket-lui__process > details > summary,
+  .topnav-menu, .settings-panel, .composer-mode__menu, .agent-menu,
+  .map-mode-switch, .map-light-presets, .map-layer-menu, .map-fallback-notice,
+  .map-station-marker, .fallback-station-marker, .map-station-detail,
+  .ticket-stage-pdf-dialog, .ops-toast
+) {
+  border-color: transparent;
+}
+
+/* 去掉重复的内部分隔；时间线、表格行线、流程连线不受影响。 */
+[data-theme] :is(
+  .ticket-stage-content__header, .ticket-chain-panel,
+  .ticket-lui__actions, .ticket-lui__answer .ticket-stage-content,
+  .diagnosis-tools, .agent-status-summary,
+  .chat-composer-area, .chat-think__body,
+  .ticket-stage-pdf-dialog__header, .ticket-stage-pdf-dialog__footer
+) {
+  border-color: transparent;
+}
+
+/* 可点击项用填充、文字和原有状态标记反馈，不再叠加外框。 */
+[data-theme] :is(
+  .task-card, .session-row, .new-chat-button, .role-options button, .scene-tools button,
+  .sidebar--rail .icon-button, .map-light-presets button,
+  .ticket-page__back, .ticket-tabs__tab, .ticket-tabs-bar__chain,
+  .reasoning-col__head,
+  .ticket-qa__action-card, .ticket-qa__suggestions button,
+  .sidebar-composer__capsules button, .prompt-chips button,
+  .composer-mode__trigger, .composer-toolbar__model,
+  .chat-think__node-chip, .chat-defect-card__actions button,
+  .chat-defect-card__choice, .chat-defect-card__choice.is-recommended,
+  .conclusion-panel__btn, .ticket-stage-card__edit, .inspection-report-card
+) {
+  border-color: transparent;
+}
+
+[data-theme] :is(.composer-mode__trigger, .composer-toolbar__model),
+[data-theme] .conclusion-panel__btn:not(.is-primary),
+[data-theme] .chat-defect-card__actions button:not(.is-primary) {
+  background: var(--ops-surface-inner);
+}
+
+[data-theme] .chat-defect-card__choice:not(.is-recommended) {
+  background: var(--ops-surface-health);
+}
+
+[data-theme] :is(
+  .conclusion-panel__btn:not(.is-primary), .chat-defect-card__choice:not(.is-recommended),
+  .chat-defect-card__actions button:not(.is-primary), .composer-mode__trigger,
+  .inspection-report-card:not(.is-checked)
+):hover:not(:disabled) {
+  background: var(--ops-surface-inner);
+  color: var(--ops-text-primary);
+}
+
+[data-theme] .ticket-lui__process > details > summary:hover,
+[data-theme] .ticket-lui__process:has(> details > summary:hover) > .ticket-lui__node {
+  background: var(--ops-surface-inner);
+}
+
+/* 深色 LUI：以清晰的填充区分过程、展开内容和处理选项，保持无框。 */
+[data-theme='dark'] .ticket-lui__evidence,
+[data-theme='dark'] .ticket-lui__process > .ticket-lui__node,
+[data-theme='dark'] .ticket-lui__process > details > summary,
+[data-theme='dark'] .ticket-lui .chat-defect-card__choice:not(.is-recommended) {
+  background: var(--ops-surface-raised);
+}
+
+[data-theme='dark'] .ticket-lui__process > details > summary:hover,
+[data-theme='dark'] .ticket-lui__process > details[open] > summary,
+[data-theme='dark'] .ticket-lui__process:has(> details[open], > details > summary:hover) > .ticket-lui__node,
+[data-theme='dark'] .ticket-lui .chat-defect-card__choice:not(.is-recommended):hover:not(:disabled) {
+  background: var(--ops-surface-action);
+}
+
+[data-theme='dark'] .ticket-lui .chat-defect-card__choice.is-recommended {
+  background: color-mix(in srgb, var(--ops-accent-primary) 18%, var(--ops-surface-raised));
+}
+
+[data-theme='dark'] .ticket-lui .chat-defect-card__choice.is-recommended:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ops-accent-primary) 24%, var(--ops-surface-action));
+}
+
+/* 输入区域静置时融入界面，获得焦点时仍有明确反馈。 */
+[data-theme] :is(.ticket-composer, .chat-composer):not(:focus-within) {
+  border-color: transparent;
+}
+
+[data-theme] :is(.ticket-composer, .chat-composer):focus-within {
+  border-color: var(--ops-accent-primary);
+}
+
+[data-theme] .composer-toolbar__model:focus-visible {
+  outline: 2px solid var(--ops-accent-primary);
+  outline-offset: 2px;
+}
+
+/* 对话区字号层级：标题 15、正文 14、过程 13、操作与辅助信息 12。 */
+.ticket-qa :is(.chat-dock__title, .chat-defect-card__head strong) {
+  font-size: 15px;
+}
+
+.ticket-qa :is(
+  .ticket-qa__bubble p, .chat-defect-card__row,
+  .chat-defect-card__choice-head, .ticket-qa__action-card, .ticket-qa__composer textarea
+) {
+  font-size: 14px;
+}
+
+.ticket-qa :is(
+  .chat-think__head, .chat-think__step-body p, .kola-checklist__item,
+  .chat-defect-card__choice-desc, .ticket-qa__empty, .ticket-qa__suggestions button,
+  .composer-mode__trigger, .composer-mode__menu button, .composer-toolbar__model
+) {
+  font-size: 13px;
+}
+
+.ticket-lui .chat-defect-card__choice-head {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ticket-qa :is(
+  .chat-defect-card__actions button,
+  .ticket-qa__meta strong, .ticket-qa__meta time, .chat-defect-card__status,
+  .chat-think__node-chip, .chat-think__step-index, .kola-checklist__tick
+) {
+  font-size: 12px;
+}
+
+.ticket-qa .chat-defect-card__head,
+.ticket-qa .chat-defect-card__actions {
+  flex-wrap: wrap;
+}
+
+.ticket-qa .chat-defect-card__head strong {
+  white-space: normal;
+}
+
+.ticket-qa .chat-defect-card {
+  padding: 16px 12px;
+}
+
+.ticket-qa .chat-defect-card__rows {
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ticket-qa .chat-defect-card__actions {
+  margin-top: 16px;
+}
+
+.ticket-qa .chat-defect-card__actions button {
+  min-height: 32px;
+}
+
+/* 设置面板：加深表面层级，分段控件按实际选项数等分。 */
+.settings-panel {
+  box-shadow: 0 30px 76px rgba(0, 0, 0, 0.68);
+}
+
+.settings-panel .segmented-control.wide {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-panel .segmented-control.wide:has(> button:nth-child(3)) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.settings-panel .role-options > button {
+  background: var(--ops-surface-inner);
+}
+
+.settings-panel .role-options > button.is-selected {
+  background: var(--ops-surface-raised);
+}
+
+[data-theme='light'] .settings-panel {
+  background: var(--ops-surface-inner);
+  box-shadow: 0 22px 64px rgba(28, 28, 30, 0.26);
+}
+
+[data-theme='light'] .settings-panel .role-options > button:not(.is-selected) {
+  background: var(--ops-surface-diagnostic);
 }

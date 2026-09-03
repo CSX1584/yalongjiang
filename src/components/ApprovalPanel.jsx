@@ -1,10 +1,3 @@
-import {
-  CheckCircle as CheckCircle2,
-  ArrowBendDownLeft as CornerDownLeft,
-  Pause,
-  Airplane as Plane,
-} from '@phosphor-icons/react'
-
 // 按流程节点 id 配置审批按钮文案，兼容标准流程与合并流程
 export const DECISION_COPY = {
   review: {
@@ -116,7 +109,6 @@ export function ApprovalPanel({
                   disabled={disabled || isInactiveStatus(ticket?.status) || Boolean(busy) || signed || !allowed}
                   onClick={() => onSign?.(signRole)}
                 >
-                  <CheckCircle2 size={16} aria-hidden="true" />
                   {busy === `sign-${signRole}` ? '处理中' : signed ? meta.done : meta.label}
                 </button>
               )
@@ -128,7 +120,6 @@ export function ApprovalPanel({
               disabled={inactive}
               onClick={onApprove}
             >
-              <CheckCircle2 size={16} aria-hidden="true" />
               {busy === 'approve' ? '处理中' : copy.approve ?? '确认并继续'}
             </button>
           )}
@@ -140,7 +131,6 @@ export function ApprovalPanel({
               disabled={inactive}
               onClick={onReject}
             >
-              <CornerDownLeft size={16} aria-hidden="true" />
               {busy === 'reject' ? '处理中' : copy.reject}
             </button>
           )}
@@ -153,7 +143,6 @@ export function ApprovalPanel({
                 disabled={inactive}
                 onClick={onSuspend}
               >
-                <Pause size={16} aria-hidden="true" />
                 {busy === 'suspend' ? '处理中' : copy.suspend ?? '确认并挂起'}
               </button>
               <button
@@ -162,7 +151,6 @@ export function ApprovalPanel({
                 disabled={inactive || dronePending}
                 onClick={onDrone}
               >
-                <Plane size={16} aria-hidden="true" />
                 {busy === 'drone' ? '调度中' : dronePending ? '复检已下发' : '无人机复检'}
               </button>
             </>

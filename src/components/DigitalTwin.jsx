@@ -18,10 +18,10 @@ import { stations as fallbackStations } from '../data/demoData'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN?.trim()
 const DEFAULT_CAMERA = {
-  center: [101.08, 28.88],
-  zoom: 7.05,
-  pitch: 52,
-  bearing: -12,
+  center: [101.0023073258, 27.7601268283],
+  zoom: 8.0942241286,
+  pitch: 80,
+  bearing: 21.6,
 }
 const TERRAIN_SOURCE_ID = 'ops-terrain-dem'
 const TERRAIN_EXAGGERATION = 1.32

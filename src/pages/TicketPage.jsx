@@ -11,6 +11,7 @@ import { useApp } from '../context/AppContext'
 import ReasoningChain, { REASONING_NODE_STEP } from '../components/ReasoningChain'
 import TaskFlow from '../components/TaskFlow'
 import TicketStageContent from '../components/TicketStageContent'
+import ApprovalPanel from '../components/ApprovalPanel'
 import { resolveStepRole } from '../data/demoData'
 
 const STATUS_META = {
@@ -173,10 +174,13 @@ export default function TicketPage() {
 
   /** 页签内容区先播三卡骨架动画再出内容，每个页签仅首次进入时播 */
   const playTabLoading = useCallback((index) => {
-    if (loadedTabsRef.current.has(index)) return
+    window.clearTimeout(tabTimerRef.current)
+    if (loadedTabsRef.current.has(index)) {
+      setTabLoading(false)
+      return
+    }
     loadedTabsRef.current.add(index)
     setTabLoading(true)
-    window.clearTimeout(tabTimerRef.current)
     tabTimerRef.current = window.setTimeout(() => setTabLoading(false), 900)
   }, [])
 
@@ -302,7 +306,7 @@ export default function TicketPage() {
       if (!spaceAdvanceSteps.includes(currentStep) || drawerOpen || busy) return
       const target = event.target
       const tagName = String(target?.tagName ?? '').toLowerCase()
-      if (['input', 'textarea', 'select'].includes(tagName) || target?.isContentEditable) return
+      if (['input', 'textarea', 'select', 'button', 'summary', 'a'].includes(tagName) || target?.isContentEditable || target?.closest('[role="dialog"]')) return
       event.preventDefault()
       runAction('space')
     }
@@ -328,6 +332,9 @@ export default function TicketPage() {
   }, [ticket])
 
   const evidence = useMemo(() => collectEvidence(ticket, history), [history, ticket])
+  const activeTabStep = steps.find((item) => item.index === activeTab)
+  const tabActionsDisabled = activeTab !== currentStep || completed || ['suspended', '已挂起'].includes(ticket?.status)
+  const tabCanProcess = role === 'admin' || role === resolveStepRole(activeTabStep, ticket).id
 
   if (!ticket) {
     return (
@@ -412,7 +419,6 @@ export default function TicketPage() {
               aria-expanded={chainOpen}
               title="AI 推理链"
             >
-              <GitBranch size={14} aria-hidden="true" />
               <span>AI 推理链</span>
             </button>
           </div>
@@ -445,11 +451,15 @@ export default function TicketPage() {
             ) : (
               <div className="ticket-thread__card" data-step={activeTab}>
                 <TicketStageContent
-                  step={steps.find((stepInfo) => stepInfo.index === activeTab)}
+                  key={`${ticket.id}:${activeTab}`}
+                  step={activeTabStep}
                   ticket={ticket}
                   currentStep={currentStep}
                   completed={completed}
                   branchRole={activeTab === selectedStep ? selectedBranch : ''}
+                  presentation="lui"
+                  actionsDisabled={tabActionsDisabled || !tabCanProcess}
+                  actions={<ApprovalPanel ticket={ticket} step={activeTabStep} busy={busy} disabled={tabActionsDisabled} canProcess={tabCanProcess} role={role} branchRole={activeTab === selectedStep ? selectedBranch : ''} onApprove={() => runAction('approve')} onSign={(signRole) => runAction({ type: 'approve', signRole })} onReject={() => runAction('reject')} />}
                 />
               </div>
             )}
