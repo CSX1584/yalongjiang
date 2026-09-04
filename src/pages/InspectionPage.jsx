@@ -9,6 +9,7 @@ import {
 import { useApp } from '../context/AppContext'
 import { reportSections as demoReportSections } from '../data/demoData'
 import ReportContent from '../components/ReportContent'
+import { ToggleButton, ToggleButtonGroup } from '@heroui/react'
 
 // 巡检报告列表：可按名称/编号搜索、按生成时间段筛选，勾选后走批量分析
 // 导出给对话指令：发送报告名称时命中对应报告出分析结果
@@ -113,18 +114,27 @@ export default function InspectionPage() {
                     aria-label="搜索报告名称或编号"
                   />
                 </label>
-                <div className="segmented-control" role="group" aria-label="生成时间段筛选">
+                <ToggleButtonGroup
+                  className="segmented-control ops-heroui-toggle-group"
+                  aria-label="生成时间段筛选"
+                  selectionMode="single"
+                  disallowEmptySelection
+                  selectedKeys={new Set([range])}
+                  onSelectionChange={(keys) => {
+                    const next = String([...keys][0] ?? '')
+                    if (next) setRange(next)
+                  }}
+                >
                   {REPORT_RANGES.map((item) => (
-                    <button
-                      className={range === item.id ? 'is-selected' : ''}
+                    <ToggleButton
+                      className={range === item.id ? 'is-selected ops-heroui-toggle' : 'ops-heroui-toggle'}
+                      id={item.id}
                       key={item.id}
-                      type="button"
-                      onClick={() => setRange(item.id)}
                     >
                       {item.label}
-                    </button>
+                    </ToggleButton>
                   ))}
-                </div>
+                </ToggleButtonGroup>
               </div>
 
               <div className="inspection-report-pick__list">

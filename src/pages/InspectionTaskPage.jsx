@@ -9,12 +9,16 @@ import {
   CheckCircle as CheckCircle2,
   ClipboardText,
   MapPin,
-  PaperPlaneTilt as Send,
   ShieldCheck,
   User as UserRound,
   WarningCircle as CircleAlert,
 } from '@phosphor-icons/react'
 import { useApp } from '../context/AppContext'
+import {
+  AgentConversation,
+  AgentConversationComposer,
+  AgentConversationSuggestions,
+} from '../components/AgentChatPanel'
 import TaskFlow from '../components/TaskFlow'
 import ReportContent from '../components/ReportContent'
 import DroneRouteMap from '../components/DroneRouteMap'
@@ -32,6 +36,7 @@ import {
   reportSections as demoReportSections,
   stations,
 } from '../data/demoData'
+import { Button, ToggleButton, ToggleButtonGroup } from '@heroui/react'
 
 const MESSAGE_ICONS = {
   agent: Bot,
@@ -98,18 +103,28 @@ function PlanStage({ step, content, routeTab, onSelectRoute, canConfirm, busy, o
         <MetricGrid items={content.planMetrics} />
         <StageCard title="巡检路线方案" eyebrow="待运维值班员确认" icon={MapPin}>
           {content.routes.length > 1 && (
-            <div className="route-tabs">
+            <ToggleButtonGroup
+              className="route-tabs ops-heroui-toggle-group"
+              aria-label="巡检路线方案"
+              selectionMode="single"
+              disallowEmptySelection
+              selectedKeys={new Set([String(routeTab)])}
+              onSelectionChange={(keys) => {
+                const next = Number([...keys][0])
+                if (Number.isInteger(next)) onSelectRoute(next)
+              }}
+              isDetached
+            >
               {content.routes.map((item, index) => (
-                <button
-                  className={index === routeTab ? 'is-active' : ''}
+                <ToggleButton
+                  className={index === routeTab ? 'is-active ops-heroui-toggle' : 'ops-heroui-toggle'}
+                  id={String(index)}
                   key={item.station.id}
-                  type="button"
-                  onClick={() => onSelectRoute(index)}
                 >
                   {item.station.shortName}
-                </button>
+                </ToggleButton>
               ))}
-            </div>
+            </ToggleButtonGroup>
           )}
           {active && (
             <DroneRouteMap station={active.station} route={active.route} mode="plan" />
@@ -117,9 +132,9 @@ function PlanStage({ step, content, routeTab, onSelectRoute, canConfirm, busy, o
         </StageCard>
         {canConfirm && (
           <div className="inspection-task-actions">
-            <button className="button-primary" type="button" disabled={busy} onClick={onConfirm}>
+            <Button className="button-primary ops-heroui-button" type="button" variant="primary" size="sm" isDisabled={busy} onPress={onConfirm}>
               <CheckCircle2 size={15} />确认路线，开始采集
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -229,7 +244,6 @@ export default function InspectionTaskPage() {
   const [qaMessages, setQaMessages] = useState([])
   const [busy, setBusy] = useState(false)
   const streamRef = useRef(null)
-  const chatCountRef = useRef(0)
   const qaReplyTimerRef = useRef(null)
 
   const stationList = useMemo(
@@ -275,19 +289,28 @@ export default function InspectionTaskPage() {
     setSelectedStep(currentStep)
   }, [ticketId, currentStep])
 
+  // 路由复用时清空上一个任务的本地问答和待回复，避免消息串到新任务。
+  useEffect(() => {
+    setDraft('')
+    setQaMessages([])
+    setBusy(false)
+    if (qaReplyTimerRef.current) {
+      window.clearTimeout(qaReplyTimerRef.current)
+      qaReplyTimerRef.current = null
+    }
+  }, [ticketId])
+
   // 切换任务或回到采集节点时重置飞行进度
   useEffect(() => {
     setFlightIndex(0)
     setFlightDone(false)
   }, [ticketId, currentStep])
 
-  // 对话气泡并入任务流：仅在有新问答消息时滚到底部
+  // 对话气泡并入任务流：切换节点或追加问答后保持最新内容可见
   useEffect(() => {
-    if (qaMessages.length === chatCountRef.current) return
-    chatCountRef.current = qaMessages.length
     const stream = streamRef.current
     if (stream) stream.scrollTop = stream.scrollHeight
-  }, [qaMessages.length])
+  }, [qaMessages.length, selectedStep, currentStep, ticketId])
 
   useEffect(() => () => {
     if (qaReplyTimerRef.current) window.clearTimeout(qaReplyTimerRef.current)
@@ -481,90 +504,59 @@ export default function InspectionTaskPage() {
             </div>
           </div>
 
-          <div className="ticket-thread__stream" ref={streamRef}>
-            {visibleHistory.map(renderMessage)}
-            {selectedInfo.id === 'plan' && (
-              <PlanStage
-                step={selectedInfo}
-                content={content}
-                routeTab={routeTab}
-                onSelectRoute={setRouteTab}
-                canConfirm={onCurrentStep && currentStep === 1}
-                busy={busy}
-                onConfirm={confirmPlan}
-              />
+          <AgentConversation
+            messages={qaMessages}
+            streamClassName="ticket-thread__stream"
+            streamRef={streamRef}
+            autoScroll={false}
+            empty={null}
+            beforeMessages={(
+              <>
+                {visibleHistory.map(renderMessage)}
+                {selectedInfo.id === 'plan' && (
+                  <PlanStage
+                    step={selectedInfo}
+                    content={content}
+                    routeTab={routeTab}
+                    onSelectRoute={setRouteTab}
+                    canConfirm={onCurrentStep && currentStep === 1}
+                    busy={busy}
+                    onConfirm={confirmPlan}
+                  />
+                )}
+                {selectedInfo.id === 'collect' && (
+                  <CollectStage
+                    step={selectedInfo}
+                    content={content}
+                    flightIndex={flightIndex}
+                    flightDone={collectFinished}
+                    onFlightDone={handleFlightLegDone}
+                  />
+                )}
+                {selectedInfo.id === 'analyze' && (
+                  <AnalyzeStage step={selectedInfo} content={content} />
+                )}
+                {selectedInfo.id === 'report' && (
+                  <ReportStage step={selectedInfo} sections={sections} />
+                )}
+              </>
             )}
-            {selectedInfo.id === 'collect' && (
-              <CollectStage
-                step={selectedInfo}
-                content={content}
-                flightIndex={flightIndex}
-                flightDone={collectFinished}
-                onFlightDone={handleFlightLegDone}
-              />
+            footer={(
+              <div className="ticket-thread__chat-bar">
+                <AgentConversationSuggestions
+                  presets={QA_SUGGESTIONS[selectedInfo.id] ?? [`${selectedInfo.name}的进展如何？`, '有哪些需要我处理的事项？']}
+                  onSuggestionSelect={(item) => setDraft(typeof item === 'string' ? item : item?.question ?? '')}
+                />
+                <AgentConversationComposer
+                  draft={draft}
+                  setDraft={setDraft}
+                  submitMessage={submitQuestion}
+                  placeholder="补充意见或向智能体提问"
+                  ariaLabel="补充意见或向智能体提问"
+                />
+              </div>
             )}
-            {selectedInfo.id === 'analyze' && (
-              <AnalyzeStage step={selectedInfo} content={content} />
-            )}
-            {selectedInfo.id === 'report' && (
-              <ReportStage step={selectedInfo} sections={sections} />
-            )}
-
-            {/* Smart Assistant 对话气泡流：并入中间对话流，气泡样式保持不变 */}
-            {qaMessages.map((message) => {
-              const isUser = message.type === 'user'
-              const AvatarIcon = isUser ? UserRound : Bot
-              return (
-                <article className={`ticket-qa__message ticket-qa__message--${isUser ? 'user' : 'agent'}`} key={message.id}>
-                  <span className="ticket-qa__avatar" aria-hidden="true"><AvatarIcon size={16} /></span>
-                  <div className="ticket-qa__main">
-                    <div className="ticket-qa__meta">
-                      <strong>{message.actor}</strong>
-                      <time>{message.time}</time>
-                    </div>
-                    <div className="ticket-qa__bubble">
-                      <p>{message.content}</p>
-                    </div>
-                  </div>
-                </article>
-              )
-            })}
-          </div>
-
-          <div className="ticket-thread__chat-bar">
-            <div className="ticket-qa__suggestions">
-              {(QA_SUGGESTIONS[selectedInfo.id] ?? [`${selectedInfo.name}的进展如何？`, '有哪些需要我处理的事项？']).map((text) => (
-                <button key={text} type="button" onClick={() => setDraft(text)}>
-                  {text}
-                </button>
-              ))}
-            </div>
-            <div className="ticket-composer ticket-qa__composer">
-              <textarea
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault()
-                    submitQuestion()
-                  }
-                }}
-                rows={1}
-                placeholder="补充意见或向智能体提问"
-                aria-label="补充意见或向智能体提问"
-              />
-              <button
-                className="ticket-composer__send"
-                type="button"
-                disabled={!draft.trim()}
-                onClick={submitQuestion}
-                aria-label="发送"
-                title="发送"
-              >
-                <Send size={17} />
-              </button>
-            </div>
-          </div>
+          />
         </section>
       </div>
 

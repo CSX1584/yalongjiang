@@ -4,6 +4,7 @@ import { Gauge, Plus } from '@phosphor-icons/react'
 import { useApp } from '../context/AppContext'
 import { COMPOSER_MODES } from './ComposerToolbar'
 import { severityKeyOf, TaskCard, ticketPath } from './taskCardUtils'
+import { ToggleButton, ToggleButtonGroup } from '@heroui/react'
 
 const GUI_TABS = [
   { key: 'todo', label: '待办' },
@@ -39,16 +40,28 @@ export function GuiTabsBar({ activeTab, onTabChange }) {
 
   return (
     <div className="gui-tabs">
-      {GUI_TABS.map((tab) => (
-        <button
-          key={tab.key}
-          className={`gui-tabs__tab ${activeTab === tab.key ? 'is-active' : ''}`}
-          type="button"
-          onClick={() => onTabChange(tab.key)}
-        >
-          {tab.label}
-        </button>
-      ))}
+      <ToggleButtonGroup
+        className="gui-tabs__group ops-heroui-toggle-group"
+        aria-label="任务状态"
+        selectionMode="single"
+        disallowEmptySelection
+        selectedKeys={new Set([activeTab])}
+        onSelectionChange={(keys) => {
+          const next = String([...keys][0] ?? '')
+          if (next) onTabChange(next)
+        }}
+      >
+        {GUI_TABS.map((tab) => (
+          <ToggleButton
+            key={tab.key}
+            className={`gui-tabs__tab ops-heroui-toggle ${activeTab === tab.key ? 'is-active' : ''}`}
+            id={tab.key}
+            variant="ghost"
+          >
+            {tab.label}
+          </ToggleButton>
+        ))}
+      </ToggleButtonGroup>
       <span className="composer-mode gui-tabs__add">
         {menuOpen ? (
           <>

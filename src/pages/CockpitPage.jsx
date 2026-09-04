@@ -38,7 +38,10 @@ function KpiCard({ item, index }) {
   const Icon = kpiIcons[index % kpiIcons.length]
   const negative = item.trend?.startsWith('-')
   return (
-    <article className={`kpi-card tone-${item.tone || 'neutral'}`}>
+    <article
+      className={`kpi-card tone-${item.tone || 'neutral'}`}
+      style={{ '--kpi-index': index }}
+    >
       <div className="kpi-label"><span>{item.label}</span><Icon size={15} /></div>
       <div className="kpi-value"><strong>{item.value}</strong><span>{item.unit}</span></div>
       <div className="kpi-foot">
@@ -69,6 +72,7 @@ function TaskTimeline({ tickets }) {
 
 function AgentBand({ tickets }) {
   const activeCount = tickets?.length || 3
+  const visibleAgents = (agents || []).filter((agent) => agent.id !== 'orchestrator').slice(0, 8)
   return (
     <section className="agent-band" aria-label="Agent 运行状态">
       <svg className="agent-card-gradient-defs" width="0" height="0" aria-hidden="true">
@@ -80,10 +84,14 @@ function AgentBand({ tickets }) {
           </radialGradient>
         </defs>
       </svg>
-      {(agents || []).filter((agent) => agent.id !== 'orchestrator').slice(0, 8).map((agent) => {
+      {visibleAgents.map((agent, index) => {
         const AgentIcon = agentIcons[agent.id] ?? Activity
         return (
-          <article className="agent-status-card" key={agent.id} style={{ '--agent-color': agent.color || '#5291ff' }}>
+          <article
+            className="agent-status-card"
+            key={agent.id}
+            style={{ '--agent-color': agent.color || '#5291ff', '--agent-index': index }}
+          >
             <div className="agent-status-card__copy">
               <strong>{agent.name}</strong>
               <span className="agent-status-card__count"><b>{activeCount}</b>项</span>
@@ -116,7 +124,9 @@ export default function CockpitPage({ active = true }) {
 
   return (
     <div className="cockpit-page page-enter">
-      <section className="kpi-grid">{kpis.slice(0, 7).map((item, index) => <KpiCard item={item} index={index} key={item.label} />)}</section>
+      <section className="kpi-grid" aria-label="流域运行指标">
+        {kpis.slice(0, 7).map((item, index) => <KpiCard item={item} index={index} key={item.label} />)}
+      </section>
       <DigitalTwin stations={stations} active={active} />
       <TaskTimeline tickets={tickets} />
       <AgentBand tickets={tickets} />

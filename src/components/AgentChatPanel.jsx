@@ -297,10 +297,25 @@ const PRESET_QA = [  {
  * presets：可选胶囊列表，默认缺陷诊断预置问答；无 answer 的纯指令胶囊发送后清空输入框
  * initialDraft：挂载时预填输入框的文案（侧栏输入框指令的 nextDraft 透传）
  */
-export function useAgentChat(setMessages, resolveReply, presets = PRESET_QA, initialDraft = '') {
+export function useAgentChat(setMessages, resolveReply, presets = PRESET_QA, initialDraft = '', scopeKey) {
   const [draft, setDraft] = useState(initialDraft)
   const [presetIndex, setPresetIndex] = useState(0)
   const replyTimerRef = useRef(null)
+  const scopeRef = useRef(scopeKey)
+
+  // Dock 常驻时切换会话也要切换草稿；种子清空后不覆盖用户刚输入的内容。
+  useEffect(() => {
+    const scopeChanged = scopeRef.current !== scopeKey
+    if (scopeChanged && replyTimerRef.current) {
+      window.clearTimeout(replyTimerRef.current)
+      replyTimerRef.current = null
+    }
+    if (scopeChanged || initialDraft) {
+      setDraft(initialDraft || '')
+      if (scopeChanged) setPresetIndex(0)
+    }
+    scopeRef.current = scopeKey
+  }, [initialDraft, scopeKey])
 
   // 发送指定文本：气泡内动作卡片（如「开始巡检」）点击时直接发消息，不经过输入框
   const dispatchMessage = (rawText) => {
@@ -352,15 +367,190 @@ export function useAgentChat(setMessages, resolveReply, presets = PRESET_QA, ini
 }
 
 /**
- * 对话内容区：消息流 + 胶囊建议 + 输入框，缺陷单抽屉与任务中心对话窗口共用
- * renderToolbar：可选，渲染输入框内底部工具行（附件/模式/模型/发送），提供时隐藏右上角发送按钮
- * renderApproval：可选，渲染消息上的流程审批卡（按钮直接推进工单流程）
+ * 对话消息：所有对话容器共用同一套消息、思维链和动作卡片渲染。
+ * 页面只需提供统一格式的 message，内容差异通过数据表达。
  */
-export function AgentConversation({ messages, draft, setDraft, submitMessage, sendText, pickPreset, presets, renderToolbar, renderApproval }) {
+export function AgentConversationMessage({
+  message,
+  sendText,
+  renderApproval,
+  onMessageSuggestion,
+  className = '',
+  children,
+}) {
   const { advanceKolaDemo } = useApp()
-  const streamRef = useRef(null)
+  // user 与 staff（工单流程里的人员发言）都渲染为右侧气泡
+  const isUser = message.type === 'user' || message.type === 'staff'
+  const agentAvatar = isUser ? null : (AGENT_AVATAR_META[message.actor] ?? FALLBACK_AGENT_AVATAR)
+  const AvatarIcon = isUser ? UserRound : agentAvatar.Icon
+  // 柯拉演示消息：think 带 duration / 含 checklist / 含 defectCard 时走自驱动动画
+  const isKolaAnim = !isUser && Boolean(message.think?.duration != null || message.checklist || message.defectCard)
+
+  return (
+    <article className={`ticket-qa__message ticket-qa__message--${isUser ? 'user' : 'agent'}${className ? ` ${className}` : ''}`}>
+      <span className={`ticket-qa__avatar${agentAvatar ? ` ticket-qa__avatar--${agentAvatar.tone}` : ''}`} aria-hidden="true"><AvatarIcon size={16} /></span>
+      <div className="ticket-qa__main">
+        <div className="ticket-qa__meta">
+          <strong>{message.actor ?? (isUser ? '运维值班员' : '诊断agent')}</strong>
+          {message.time ? <time>{message.time}</time> : null}
+        </div>
+        {children ?? (isKolaAnim ? <KolaMessageBody message={message} /> : (
+          <>
+            {/* 思维链是独立卡片，不套在气泡里 */}
+            {message.think ? <ThinkChain data={message.think} /> : null}
+            {message.content ? (
+              <div className="ticket-qa__bubble">
+                <p>{message.content}</p>
+              </div>
+            ) : null}
+          </>
+        ))}
+        {message.suggestions?.length ? (
+          <AgentConversationSuggestions
+            presets={message.suggestions}
+            onSuggestionSelect={(item, index) => {
+              if (onMessageSuggestion) onMessageSuggestion(item, index)
+              else sendText?.(typeof item === 'string' ? item : item?.question)
+            }}
+          />
+        ) : null}
+        {/* 演示多选项卡：key 选项点击走演示状态机（A/B/C/D），等价于按空格选 A */}
+        {message.actions?.length ? (
+          <div className="ticket-qa__action-group">
+            {message.actions.map((action) => {
+              const ActionIcon = ACTION_ICONS[action.icon] ?? ClipboardText
+              return (
+                <button
+                  className="ticket-qa__action-card"
+                  key={action.key}
+                  type="button"
+                  onClick={() => advanceKolaDemo?.(action.key)}
+                >
+                  <ActionIcon size={14} aria-hidden="true" />
+                  <span>{action.key} · {action.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        ) : null}
+        {/* 动作卡片：点击等同发送指定文字（如「开始巡检」触发批量分析） */}
+        {message.action ? (
+          <button
+            className="ticket-qa__action-card"
+            type="button"
+            onClick={() => sendText?.(message.action.sendText ?? message.action.label)}
+          >
+            <Airplane size={14} aria-hidden="true" />
+            <span>{message.action.label}</span>
+          </button>
+        ) : null}
+        {/* 流程审批卡：按钮直接推进工单流程，状态由渲染方按工单实时数据推导 */}
+        {message.approval && renderApproval ? renderApproval(message.approval) : null}
+      </div>
+    </article>
+  )
+}
+
+/** 胶囊建议：默认委托给旧的 pickPreset，也可由页面接管选择行为。 */
+export function AgentConversationSuggestions({ presets = [], pickPreset, onSuggestionSelect, className = '' }) {
+  if (!presets?.length) return null
+  return (
+    <div className={`ticket-qa__suggestions${className ? ` ${className}` : ''}`}>
+      {presets.map((item, index) => {
+        const label = typeof item === 'string' ? item : item?.question
+        if (!label) return null
+        return (
+          <button
+            key={item?.id ?? label}
+            type="button"
+            onClick={() => (onSuggestionSelect ? onSuggestionSelect(item, index) : pickPreset?.(index))}
+          >
+            {label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** 输入框：统一 Enter 发送、工具栏插槽和发送按钮行为。 */
+export function AgentConversationComposer({
+  draft = '',
+  setDraft,
+  submitMessage,
+  renderToolbar,
+  placeholder = '向诊断agent提问',
+  ariaLabel,
+  className = '',
+}) {
+  const value = draft ?? ''
+  const sendDisabled = !String(value).trim()
+  return (
+    <div className={`ticket-composer ticket-qa__composer${renderToolbar ? ' ticket-composer--stacked' : ''}${className ? ` ${className}` : ''}`}>
+      <textarea
+        value={value}
+        onChange={(event) => setDraft?.(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent?.isComposing && event.keyCode !== 229) {
+            event.preventDefault()
+            submitMessage?.()
+          }
+        }}
+        rows={1}
+        placeholder={placeholder}
+        aria-label={ariaLabel ?? placeholder}
+      />
+      {renderToolbar ? renderToolbar({ sendDisabled, onSend: submitMessage }) : (
+        <button
+          className="ticket-composer__send"
+          type="button"
+          disabled={sendDisabled}
+          onClick={submitMessage}
+          aria-label="发送"
+          title="发送"
+        >
+          <Send size={17} />
+        </button>
+      )}
+    </div>
+  )
+}
+
+/**
+ * 对话内容区：消息流 + 胶囊建议 + 输入框，缺陷单抽屉与任务中心对话窗口共用。
+ * renderToolbar：可选，渲染输入框内底部工具行（附件/模式/模型/发送），提供时隐藏右上角发送按钮。
+ * renderApproval：可选，渲染消息上的流程审批卡（按钮直接推进工单流程）。
+ * suggestions/onSuggestionSelect：可选的建议数据与选择回调；presets/pickPreset 保持旧 API。
+ */
+export function AgentConversation({
+  messages = [],
+  draft,
+  setDraft,
+  submitMessage,
+  sendText,
+  pickPreset,
+  presets = [],
+  suggestions,
+  onSuggestionSelect,
+  renderToolbar,
+  renderApproval,
+  placeholder = '向诊断agent提问',
+  empty = '暂无问答记录',
+  streamClassName = 'ticket-qa__stream',
+  streamRef: providedStreamRef,
+  beforeMessages,
+  afterMessages,
+  footer,
+  ariaLabel,
+  autoScroll = true,
+  onMessageSuggestion,
+}) {
+  const internalStreamRef = useRef(null)
+  const streamRef = providedStreamRef || internalStreamRef
+  const suggestionItems = suggestions ?? presets
   // 新气泡追加在底部后视图跟随滚到底；MutationObserver 覆盖动画揭示内容引起的高度增长
   useEffect(() => {
+    if (!autoScroll) return undefined
     const stream = streamRef.current
     if (!stream) return undefined
     const follow = () => { stream.scrollTop = stream.scrollHeight }
@@ -368,113 +558,42 @@ export function AgentConversation({ messages, draft, setDraft, submitMessage, se
     const observer = new MutationObserver(follow)
     observer.observe(stream, { childList: true, subtree: true })
     return () => observer.disconnect()
-  }, [messages])
+  }, [autoScroll, messages])
   return (
     <>
-      <div className="ticket-qa__stream" ref={streamRef}>
-        {messages.length === 0 ? (
-          <div className="ticket-qa__empty">暂无问答记录</div>
-        ) : messages.map((message) => {
-          // user 与 staff（工单流程里的人员发言）都渲染为右侧气泡
-          const isUser = message.type === 'user' || message.type === 'staff'
-          const agentAvatar = isUser ? null : (AGENT_AVATAR_META[message.actor] ?? FALLBACK_AGENT_AVATAR)
-          const AvatarIcon = isUser ? UserRound : agentAvatar.Icon
-          // 柯拉演示消息：think 带 duration / 含 checklist / 含 defectCard 时走自驱动动画
-          const isKolaAnim = !isUser && Boolean(message.think?.duration != null || message.checklist || message.defectCard)
-          return (
-            <article className={`ticket-qa__message ticket-qa__message--${isUser ? 'user' : 'agent'}`} key={message.id}>
-              <span className={`ticket-qa__avatar${agentAvatar ? ` ticket-qa__avatar--${agentAvatar.tone}` : ''}`} aria-hidden="true"><AvatarIcon size={16} /></span>
-              <div className="ticket-qa__main">
-                <div className="ticket-qa__meta">
-                  <strong>{message.actor ?? (isUser ? '运维值班员' : '诊断agent')}</strong>
-                  <time>{message.time}</time>
-                </div>
-                {isKolaAnim ? <KolaMessageBody message={message} /> : (
-                  <>
-                    {/* 思维链是独立卡片，不套在气泡里 */}
-                    {message.think ? <ThinkChain data={message.think} /> : null}
-                    {message.content ? (
-                      <div className="ticket-qa__bubble">
-                        <p>{message.content}</p>
-                      </div>
-                    ) : null}
-                  </>
-                )}
-                {/* 演示多选项卡：key 选项点击走演示状态机（A/B/C/D），等价于按空格选 A */}
-                {message.actions?.length ? (
-                  <div className="ticket-qa__action-group">
-                    {message.actions.map((action) => {
-                      const ActionIcon = ACTION_ICONS[action.icon] ?? ClipboardText
-                      return (
-                        <button
-                          className="ticket-qa__action-card"
-                          key={action.key}
-                          type="button"
-                          onClick={() => advanceKolaDemo?.(action.key)}
-                        >
-                          <ActionIcon size={14} aria-hidden="true" />
-                          <span>{action.key} · {action.label}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                ) : null}
-                {/* 动作卡片：点击等同发送指定文字（如「开始巡检」触发批量分析） */}
-                {message.action ? (
-                  <button
-                    className="ticket-qa__action-card"
-                    type="button"
-                    onClick={() => sendText?.(message.action.sendText ?? message.action.label)}
-                  >
-                    <Airplane size={14} aria-hidden="true" />
-                    <span>{message.action.label}</span>
-                  </button>
-                ) : null}
-                {/* 流程审批卡：按钮直接推进工单流程，状态由渲染方按工单实时数据推导 */}
-                {message.approval && renderApproval ? renderApproval(message.approval) : null}
-              </div>
-            </article>
-          )
-        })}
-      </div>
-
-      {presets.length > 0 && (
-        <div className="ticket-qa__suggestions">
-          {presets.map((item, index) => (
-            <button key={item.question} type="button" onClick={() => pickPreset(index)}>
-              {item.question}
-            </button>
+      <div className={streamClassName} ref={streamRef}>
+        {beforeMessages}
+        {messages.length === 0
+          ? (empty == null ? null : typeof empty === 'string' ? <div className="ticket-qa__empty">{empty}</div> : empty)
+          : messages.map((message) => (
+            <AgentConversationMessage
+              key={message.id}
+              message={message}
+              sendText={sendText}
+              renderApproval={renderApproval}
+              onMessageSuggestion={onMessageSuggestion}
+            />
           ))}
-        </div>
-      )}
-
-      <div className={`ticket-composer ticket-qa__composer${renderToolbar ? ' ticket-composer--stacked' : ''}`}>
-        <textarea
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.preventDefault()
-              submitMessage()
-            }
-          }}
-          rows={1}
-          placeholder="向诊断agent提问"
-          aria-label="向诊断agent提问"
-        />
-        {renderToolbar ? renderToolbar({ sendDisabled: !draft.trim(), onSend: submitMessage }) : (
-          <button
-            className="ticket-composer__send"
-            type="button"
-            disabled={!draft.trim()}
-            onClick={submitMessage}
-            aria-label="发送"
-            title="发送"
-          >
-            <Send size={17} />
-          </button>
-        )}
+        {afterMessages}
       </div>
+
+      {footer ?? (
+        <>
+          <AgentConversationSuggestions
+            presets={suggestionItems}
+            pickPreset={pickPreset}
+            onSuggestionSelect={onSuggestionSelect}
+          />
+          <AgentConversationComposer
+            draft={draft}
+            setDraft={setDraft}
+            submitMessage={submitMessage}
+            renderToolbar={renderToolbar}
+            placeholder={placeholder}
+            ariaLabel={ariaLabel}
+          />
+        </>
+      )}
     </>
   )
 }

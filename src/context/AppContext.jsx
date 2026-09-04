@@ -78,19 +78,30 @@ const AppContext = createContext(null)
 
 const clone = (value) => JSON.parse(JSON.stringify(value))
 
-// 智能体对话窗口初始会话：以演示会话为种子，消息格式对齐 AgentChatPanel
+// 对话消息保持业务字段，同时补齐共享渲染器需要的最小字段。
+// 这样全屏工作台、停靠栏和任务页都消费同一套消息数据，不在页面层重复适配。
+function normalizeChatMessage(message = {}) {
+  const fromAgent = ['agent', 'assistant'].includes(message.role)
+    || message.kind === 'agent'
+    || message.sender === 'agent'
+  const type = message.type ?? (message.role === 'staff' ? 'staff' : fromAgent ? 'agent' : 'user')
+  return {
+    ...message,
+    type,
+    time: message.time ?? message.at ?? '',
+    content: message.content ?? message.text ?? '',
+  }
+}
+
+// 智能体对话窗口初始会话：以演示会话为种子，保留 actor/suggestions 等业务字段
 function seedChatThreads() {
   return chatSessions.map((session) => ({
+    ...session,
     id: session.id,
     title: session.title,
     preview: session.preview || '',
     updatedAt: session.updatedAt,
-    messages: (session.messages || []).map((message) => ({
-      id: message.id,
-      type: message.role === 'user' ? 'user' : 'agent',
-      time: message.time,
-      content: message.content,
-    })),
+    messages: (session.messages || []).map(normalizeChatMessage),
   }))
 }
 
@@ -486,10 +497,16 @@ export function AppProvider({ children }) {
    */
   const ensureChat = useCallback((thread) => {
     if (!thread?.id) return
+    const nextThread = {
+      ...thread,
+      title: thread.title || '新建对话',
+      updatedAt: thread.updatedAt || nowLabel(),
+      messages: (thread.messages || []).map(normalizeChatMessage),
+    }
     setChatThreads((current) =>
       current.some((item) => item.id === thread.id)
         ? current
-        : [{ id: thread.id, title: thread.title || '新建对话', updatedAt: nowLabel(), messages: [] }, ...current],
+        : [nextThread, ...current],
     )
   }, [])
 
@@ -503,11 +520,33 @@ export function AppProvider({ children }) {
     setChatDockOpen(true)
   }, [ensureChat])
 
+  // 全屏工作台选择会话时只同步全局选中项，不重新打开停靠栏。
+  const selectChat = useCallback((threadId) => {
+    if (threadId) setActiveChatId(threadId)
+  }, [])
+
   const createChat = useCallback(() => {
     openChat({ id: `chat-${Date.now()}`, title: '新建对话' })
   }, [openChat])
 
   const closeChat = useCallback(() => setChatDockOpen(false), [])
+
+  // 全屏工作台与停靠栏共用会话元数据（例如当前智能体）。
+  const updateChatThread = useCallback((threadId, updater) => {
+    if (!threadId) return
+    setChatThreads((current) =>
+      current.map((item) => {
+        if (item.id !== threadId) return item
+        return typeof updater === 'function' ? updater(item) : { ...item, ...updater }
+      }),
+    )
+  }, [])
+
+  const removeChat = useCallback((threadId) => {
+    if (!threadId) return
+    setChatThreads((current) => current.filter((item) => item.id !== threadId))
+    setActiveChatId((current) => (current === threadId ? '' : current))
+  }, [])
 
   const seedChatDraft = useCallback((threadId, text) => {
     setChatDraftSeed(text ? { threadId, text } : null)
@@ -539,7 +578,8 @@ export function AppProvider({ children }) {
     setChatThreads((current) =>
       current.map((item) => {
         if (item.id !== threadId) return item
-        const messages = typeof updater === 'function' ? updater(item.messages) : updater
+        const nextMessages = typeof updater === 'function' ? updater(item.messages) : updater
+        const messages = (Array.isArray(nextMessages) ? nextMessages : []).map(normalizeChatMessage)
         const firstUser = messages.find((message) => message.type === 'user')
         const isCommand = CHAT_COMMAND_CAPSULES.some((command) => firstUser?.content?.includes(command))
         return {
@@ -1714,8 +1754,11 @@ export function AppProvider({ children }) {
       activeChatId,
       chatDockOpen,
       openChat,
+      selectChat,
       createChat,
       closeChat,
+      updateChatThread,
+      removeChat,
       chatDraftSeed,
       seedChatDraft,
       clearChatDraftSeed,
@@ -1812,6 +1855,8 @@ export function AppProvider({ children }) {
       kolaAlarmTyped,
       registerKolaTicket,
       openChat,
+      selectChat,
+      removeChat,
       openTicketChat,
       hasAnimPlayed,
       markAnimPlayed,
@@ -1846,6 +1891,7 @@ export function AppProvider({ children }) {
       toast,
       uiMode,
       toggleReportChecked,
+      updateChatThread,
       updateChatMessages,
       updateTicket,
     ],

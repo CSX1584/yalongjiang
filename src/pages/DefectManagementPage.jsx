@@ -9,6 +9,7 @@ import {
 import { useApp } from '../context/AppContext'
 import { fieldsFromRows } from '../components/TicketStageContent'
 import { KOLA_DEFECT_ROWS } from '../data/demoData'
+import { Button } from '@heroui/react'
 
 // 缺陷单输入项，与缺陷确认节点编辑弹窗字段一致
 const DEFECT_ROWS = [
@@ -336,8 +337,8 @@ export default function DefectManagementPage() {
             })}
           </div>
           <div className="ticket-stage-defect-form__actions">
-            <button className="button-secondary" type="button" onClick={handleSave}>保存</button>
-            <button className="button-primary" type="submit"><Check size={15} />提交</button>
+            <Button className="button-secondary ops-heroui-button" type="button" variant="secondary" size="sm" onPress={handleSave}>保存</Button>
+            <Button className="button-primary ops-heroui-button" type="submit" variant="primary" size="sm"><Check size={15} />提交</Button>
           </div>
         </form>
       </div>

@@ -8,7 +8,6 @@ import {
   ChatsCircle,
   CheckCircle,
   ClockCounterClockwise,
-  Command,
   Gauge,
   List as Menu,
   ArrowCounterClockwise as RotateCcw,
@@ -18,14 +17,26 @@ import {
 } from '@phosphor-icons/react'
 import { useApp } from '../context/AppContext'
 import { cockpitKpis, flowVariants, OPS_DEMO_TICKET_ID, resolveStepRole, roles, stations } from '../data/demoData'
+import { Button, ToggleButton, ToggleButtonGroup } from '@heroui/react'
 import ChatDock, { SUGGESTION_PRESETS, useChatCommands } from './ChatDock'
-import { DefectActionCard, KpiCardGrid } from './AgentChatPanel'
+import {
+  AgentConversationMessage,
+  AgentConversationComposer,
+  AgentConversationSuggestions,
+  DefectActionCard,
+  KpiCardGrid,
+} from './AgentChatPanel'
 import ComposerToolbar from './ComposerToolbar'
 import CockpitPage from '../pages/CockpitPage'
 import { flowOf, severityKeyOf, TaskCard, ticketPath } from './taskCardUtils'
 import { GuiAssistantPanel, GuiTabsBar } from './GuiAssistantPanel'
 
 const roleList = Array.isArray(roles) ? roles : Object.values(roles || {})
+
+function selectedKey(keys) {
+  if (keys === 'all' || !keys) return ''
+  return String([...keys][0] ?? '')
+}
 
 // 一级导航模块（总览在前，生产管理/智能巡检带下拉子菜单）
 const MODULE_NAV_BEFORE = [
@@ -116,9 +127,9 @@ function TopBar({ onOpenSidebar }) {
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <button className="icon-button sidebar-open" type="button" onClick={onOpenSidebar} title="展开任务中心">
+        <Button className="icon-button sidebar-open ops-heroui-icon-button" type="button" variant="ghost" size="sm" isIconOnly onPress={onOpenSidebar} title="展开任务中心" aria-label="展开任务中心">
           <Menu size={18} />
-        </button>
+        </Button>
         <button className="brand-lockup" type="button" onClick={() => navigate('/')}>
           <span className="brand-mark" aria-hidden="true"><img src="/logo.svg" alt="" /></span>
           <span className="brand-copy">
@@ -235,125 +246,142 @@ function TopBar({ onOpenSidebar }) {
       </nav>
 
       <div className="topbar-actions">
-        <button className="icon-button has-badge" type="button" title="通知" onClick={() => showToast?.('3 条运维事件待关注', 'warning')}>
+        <Button className="icon-button has-badge ops-heroui-icon-button" type="button" variant="ghost" size="sm" isIconOnly title="通知" aria-label="通知" onPress={() => showToast?.('3 条运维事件待关注', 'warning')}>
           <Bell size={17} /><span className="notification-badge">3</span>
-        </button>
-        <button className={`icon-button ${settingsOpen ? 'is-active' : ''}`} type="button" title="系统设置" onClick={() => setSettingsOpen((open) => !open)}>
+        </Button>
+        <Button className={`icon-button ops-heroui-icon-button ${settingsOpen ? 'is-active' : ''}`} type="button" variant="ghost" size="sm" isIconOnly title="系统设置" aria-label="系统设置" onPress={() => setSettingsOpen((open) => !open)}>
           <Settings size={18} />
-        </button>
+        </Button>
       </div>
 
       {settingsOpen ? (
         <div className="settings-panel" role="dialog" aria-label="系统设置">
           <div className="settings-heading">
             <div><span className="eyebrow">WORKSPACE</span><h2>演示控制</h2></div>
-            <button className="icon-button" type="button" title="关闭" onClick={() => setSettingsOpen(false)}><X size={16} /></button>
+            <Button className="icon-button ops-heroui-icon-button" type="button" variant="ghost" size="sm" isIconOnly title="关闭" aria-label="关闭" onPress={() => setSettingsOpen(false)}><X size={16} /></Button>
           </div>
-          <div className="segmented-control wide settings-panel__tabs">
-            <button
-              className={settingsTab === 'general' ? 'is-selected' : ''}
-              type="button"
-              onClick={() => setSettingsTab('general')}
-            >
+          <ToggleButtonGroup
+            className="segmented-control wide settings-panel__tabs ops-heroui-toggle-group"
+            selectionMode="single"
+            disallowEmptySelection
+            selectedKeys={new Set([settingsTab])}
+            onSelectionChange={(keys) => {
+              const next = selectedKey(keys)
+              if (next) setSettingsTab(next)
+            }}
+          >
+            <ToggleButton id="general" className={settingsTab === 'general' ? 'is-selected ops-heroui-toggle' : 'ops-heroui-toggle'}>
               通用
-            </button>
-            <button
-              className={settingsTab === 'interface' ? 'is-selected' : ''}
-              type="button"
-              onClick={() => setSettingsTab('interface')}
-            >
+            </ToggleButton>
+            <ToggleButton id="interface" className={settingsTab === 'interface' ? 'is-selected ops-heroui-toggle' : 'ops-heroui-toggle'}>
               界面
-            </button>
-          </div>
+            </ToggleButton>
+          </ToggleButtonGroup>
           {settingsTab === 'general' ? (
             <>
           <section className="settings-section">
             <span className="settings-label">当前角色</span>
-            <div className="role-options">
+            <ToggleButtonGroup
+              className="role-options ops-heroui-toggle-group"
+              fullWidth
+              isDetached
+              selectionMode="single"
+              disallowEmptySelection
+              selectedKeys={new Set([role || roleList[0]?.id].filter(Boolean))}
+              onSelectionChange={(keys) => {
+                const next = selectedKey(keys)
+                const nextRole = roleList.find((item) => item.id === next)
+                if (!nextRole) return
+                setRole(nextRole.id)
+                setSettingsOpen(false)
+                // 手动切换角色：关对话窗、停演示编排，回总览页按新角色刷新待办
+                closeChat?.()
+                stopKolaDemo?.()
+                navigate('/')
+              }}
+            >
               {roleList.map((item) => (
-                <button
-                  className={role === item.id ? 'is-selected' : ''}
+                <ToggleButton
+                  className={role === item.id ? 'is-selected ops-heroui-toggle' : 'ops-heroui-toggle'}
+                  id={item.id}
                   key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setRole(item.id)
-                    setSettingsOpen(false)
-                    // 手动切换角色：关对话窗、停演示编排，回总览页按新角色刷新待办
-                    closeChat?.()
-                    stopKolaDemo?.()
-                    navigate('/')
-                  }}
                 >
                   <span>{item.name}</span>
                   <small>{item.scope || item.description}</small>
-                </button>
+                </ToggleButton>
               ))}
-            </div>
+            </ToggleButtonGroup>
           </section>
           <section className="settings-section">
             <span className="settings-label">缺陷单流程</span>
-            <div className="segmented-control wide">
+            <ToggleButtonGroup
+              className="segmented-control wide ops-heroui-toggle-group"
+              selectionMode="single"
+              disallowEmptySelection
+              selectedKeys={new Set([flowVariant])}
+              onSelectionChange={(keys) => {
+                const next = selectedKey(keys)
+                const variant = Object.values(flowVariants).find((item) => item.id === next)
+                if (!variant) return
+                setFlowVariant(variant.id)
+                showToast?.(`已切换至${variant.label}`)
+              }}
+            >
               {Object.values(flowVariants).map((variant) => (
-                <button
-                  className={flowVariant === variant.id ? 'is-selected' : ''}
+                <ToggleButton
+                  className={flowVariant === variant.id ? 'is-selected ops-heroui-toggle' : 'ops-heroui-toggle'}
+                  id={variant.id}
                   key={variant.id}
-                  type="button"
-                  onClick={() => {
-                    setFlowVariant(variant.id)
-                    showToast?.(`已切换至${variant.label}`)
-                  }}
                 >
                   {variant.label}
-                </button>
+                </ToggleButton>
               ))}
-            </div>
+            </ToggleButtonGroup>
           </section>
           <section className="settings-section">
             <span className="settings-label">外观</span>
-            <div className="segmented-control wide">
-              <button
-                className={theme === 'dark' ? 'is-selected' : ''}
-                type="button"
-                onClick={() => setTheme('dark')}
-              >
+            <ToggleButtonGroup
+              className="segmented-control wide ops-heroui-toggle-group"
+              selectionMode="single"
+              disallowEmptySelection
+              selectedKeys={new Set([theme])}
+              onSelectionChange={(keys) => {
+                const next = selectedKey(keys)
+                if (next === 'dark' || next === 'light') setTheme(next)
+              }}
+            >
+              <ToggleButton id="dark" className={theme === 'dark' ? 'is-selected ops-heroui-toggle' : 'ops-heroui-toggle'}>
                 深色
-              </button>
-              <button
-                className={theme === 'light' ? 'is-selected' : ''}
-                type="button"
-                onClick={() => setTheme('light')}
-              >
+              </ToggleButton>
+              <ToggleButton id="light" className={theme === 'light' ? 'is-selected ops-heroui-toggle' : 'ops-heroui-toggle'}>
                 浅色
-              </button>
-            </div>
+              </ToggleButton>
+            </ToggleButtonGroup>
           </section>
-          <button className="reset-button" type="button" onClick={handleReset}><RotateCcw size={15} />重置演示数据</button>
+          <Button className="reset-button ops-heroui-button" type="button" variant="secondary" size="sm" onPress={handleReset}><RotateCcw size={15} />重置演示数据</Button>
             </>
           ) : (
           <section className="settings-section">
             <span className="settings-label">界面模式</span>
-            <div className="segmented-control wide">
-              <button
-                className={uiMode === 'lui' ? 'is-selected' : ''}
-                type="button"
-                onClick={() => {
-                  setUiMode('lui')
-                  showToast?.('已切换至 LUI 对话式界面')
-                }}
-              >
+            <ToggleButtonGroup
+              className="segmented-control wide ops-heroui-toggle-group"
+              selectionMode="single"
+              disallowEmptySelection
+              selectedKeys={new Set([uiMode])}
+              onSelectionChange={(keys) => {
+                const next = selectedKey(keys)
+                if (next !== 'lui' && next !== 'gui') return
+                setUiMode(next)
+                showToast?.(next === 'lui' ? '已切换至 LUI 对话式界面' : '已切换至 GUI 卡片式界面')
+              }}
+            >
+              <ToggleButton id="lui" className={uiMode === 'lui' ? 'is-selected ops-heroui-toggle' : 'ops-heroui-toggle'}>
                 LUI · 对话式
-              </button>
-              <button
-                className={uiMode === 'gui' ? 'is-selected' : ''}
-                type="button"
-                onClick={() => {
-                  setUiMode('gui')
-                  showToast?.('已切换至 GUI 卡片式界面')
-                }}
-              >
+              </ToggleButton>
+              <ToggleButton id="gui" className={uiMode === 'gui' ? 'is-selected ops-heroui-toggle' : 'ops-heroui-toggle'}>
                 GUI · 卡片式
-              </button>
-            </div>
+              </ToggleButton>
+            </ToggleButtonGroup>
             <span className="settings-label settings-hint">GUI 模式仅影响工作台 Smart Assistant 面板，模块页保持对话式</span>
           </section>
           )}
@@ -454,30 +482,29 @@ function ModuleAssistant({ pathname, onOpenTicket }) {
 
   // 知识Agent 案例沉淀卡：工单结案后推送
   const knowledgeNotice = knowledgeDone ? (
-    <div className="assistant-notice assistant-notice--knowledge">
-      <span className="assistant-notice__avatar" aria-hidden="true"><Books size={15} /></span>
-      <div className="assistant-notice__main">
-        <strong>知识Agent</strong>
-        <div className="assistant-notice__bubble">
+    <AgentConversationMessage
+      className="assistant-notice assistant-notice__message assistant-notice--knowledge"
+      message={{ id: 'module-knowledge-summary', type: 'agent', actor: '知识Agent' }}
+    >
+      <div className="ticket-qa__bubble assistant-notice__bubble">
           <p>案例沉淀完成：处置要点已入库，同类告警自动推荐诊断路径；故障树分支先验与备件定额策略已更新。</p>
           <div className="knowledge-card">
             <strong>案例 CA-2026-0147</strong>
             <span>光伏组串热斑识别与更换 · 两河口 #3方阵 7号组串</span>
           </div>
-        </div>
       </div>
-    </div>
+    </AgentConversationMessage>
   ) : null
 
   // 运维负责人视角：主控agent不推送流域总结与KPI，只挂工单审批卡（热斑缺陷卡同款样式）
   if (isOps) {
     return (
       <>
-        <div className="assistant-notice">
-          <span className="assistant-notice__avatar" aria-hidden="true"><Command size={15} /></span>
-          <div className="assistant-notice__main">
-            <strong>主控Agent</strong>
-            <div className="assistant-notice__bubble">
+        <AgentConversationMessage
+          className="assistant-notice assistant-notice__message"
+          message={{ id: 'module-ops-summary', type: 'agent', actor: '主控Agent' }}
+        >
+          <div className="ticket-qa__bubble assistant-notice__bubble">
               {!opsTicket || opsTicket.completed ? (
                 <p>{knowledgeDone ? '工单已结案，处置案例已沉淀知识库。' : '当前没有待审批工单。'}</p>
               ) : opsStep <= 2 ? (
@@ -501,9 +528,8 @@ function ModuleAssistant({ pathname, onOpenTicket }) {
                     : `「${opsTicket.title}」已批准，AI 正在推进两票与现场作业，进度见左侧对话窗。`}
                 </p>
               )}
-            </div>
           </div>
-        </div>
+        </AgentConversationMessage>
         {knowledgeNotice}
       </>
     )
@@ -511,11 +537,12 @@ function ModuleAssistant({ pathname, onOpenTicket }) {
 
   return (
     <>
-      <div className="assistant-notice">
-        <span className="assistant-notice__avatar" aria-hidden="true"><Command size={15} /></span>
-        <div className="assistant-notice__main">
-          <strong>主控Agent</strong>
-          <div className="assistant-notice__bubble">
+      <AgentConversationMessage
+        className="assistant-notice assistant-notice__message"
+        message={{ id: 'module-summary', type: 'agent', actor: '主控Agent' }}
+      >
+        <>
+          <div className="ticket-qa__bubble assistant-notice__bubble">
             <p>{summary}</p>
             <KpiCardGrid items={kpis} />
           </div>
@@ -528,8 +555,8 @@ function ModuleAssistant({ pathname, onOpenTicket }) {
               onConfirm={onOpenTicket}
             />
           )}
-        </div>
-      </div>
+        </>
+      </AgentConversationMessage>
     </>
   )
 }
@@ -589,31 +616,22 @@ function SidebarComposer() {
 
   return (
     <div className="sidebar-composer">
-      {SUGGESTION_PRESETS.length > 0 && (
-        <div className="sidebar-composer__capsules">
-          {SUGGESTION_PRESETS.map((item) => (
-            <button key={item.question} type="button" onClick={() => setDraft(item.question)}>
-              {item.question}
-            </button>
-          ))}
-        </div>
-      )}
-      <div className="ticket-composer sidebar-composer__box ticket-composer--stacked">
-        <textarea
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.preventDefault()
-              submit()
-            }
-          }}
-          rows={1}
-          placeholder="向智能体提问"
-          aria-label="向智能体提问"
-        />
-        <ComposerToolbar setDraft={setDraft} sendDisabled={!draft.trim()} onSend={submit} />
-      </div>
+      <AgentConversationSuggestions
+        presets={SUGGESTION_PRESETS}
+        className="sidebar-composer__capsules"
+        onSuggestionSelect={(item) => setDraft(typeof item === 'string' ? item : item?.question ?? '')}
+      />
+      <AgentConversationComposer
+        draft={draft}
+        setDraft={setDraft}
+        submitMessage={submit}
+        renderToolbar={({ sendDisabled, onSend }) => (
+          <ComposerToolbar setDraft={setDraft} sendDisabled={sendDisabled} onSend={onSend} />
+        )}
+        className="sidebar-composer__box"
+        placeholder="向智能体提问"
+        ariaLabel="向智能体提问"
+      />
     </div>
   )
 }
@@ -740,10 +758,13 @@ function Sidebar({ collapsed, onCollapse, onExpand }) {
   // 版本2 导航栏：AI工作台常驻，收起态独占左列，展开态与面板并排
   const v2Rail = (
     <aside className="sidebar sidebar--mini sidebar--rail">
-      <button
-        className={`icon-button rail-orb ${!collapsed && v2View === 'assistant' ? 'is-active' : ''}`}
+      <Button
+        className={`icon-button ops-heroui-icon-button rail-orb ${!collapsed && v2View === 'assistant' ? 'is-active' : ''}`}
+        variant="ghost"
+        size="sm"
+        isIconOnly
         type="button"
-        onClick={() => {
+        onPress={() => {
           setV2View('assistant')
           onExpand()
         }}
@@ -751,11 +772,14 @@ function Sidebar({ collapsed, onCollapse, onExpand }) {
         aria-label="展开 Smart Assistant"
       >
         <ChatsCircle size={18} />
-      </button>
-      <button
-        className={`icon-button rail-history ${!collapsed && v2View === 'history' ? 'is-active' : ''}`}
+      </Button>
+      <Button
+        className={`icon-button ops-heroui-icon-button rail-history ${!collapsed && v2View === 'history' ? 'is-active' : ''}`}
+        variant="ghost"
+        size="sm"
+        isIconOnly
         type="button"
-        onClick={() => {
+        onPress={() => {
           setV2View('history')
           onExpand()
         }}
@@ -763,17 +787,20 @@ function Sidebar({ collapsed, onCollapse, onExpand }) {
         aria-label="历史对话"
       >
         <ClockCounterClockwise size={18} />
-      </button>
+      </Button>
       {/* AI智能体聚合主图入口：从顶部导航下沉到工作台左侧导航栏 */}
-      <button
-        className={`icon-button rail-agent ${location.pathname.startsWith('/agent') ? 'is-active' : ''}`}
+      <Button
+        className={`icon-button ops-heroui-icon-button rail-agent ${location.pathname.startsWith('/agent') ? 'is-active' : ''}`}
+        variant="ghost"
+        size="sm"
+        isIconOnly
         type="button"
-        onClick={() => navigate('/agent/orchestrator')}
+        onPress={() => navigate('/agent/orchestrator')}
         title="AI智能体"
         aria-label="AI智能体"
       >
         <FlowArrow size={18} />
-      </button>
+      </Button>
     </aside>
   )
 
@@ -787,7 +814,7 @@ function Sidebar({ collapsed, onCollapse, onExpand }) {
         <>
             <div className="sidebar-v2-head">
               <span className="ticket-qa__brand" role="img" aria-label="Smart Assistant" />
-              <button className="icon-button sidebar-collapse" type="button" onClick={onCollapse} title="收起面板"><ChevronLeft size={17} /></button>
+              <Button className="icon-button ops-heroui-icon-button sidebar-collapse" type="button" variant="ghost" size="sm" isIconOnly onPress={onCollapse} title="收起面板" aria-label="收起面板"><ChevronLeft size={17} /></Button>
             </div>
             {uiMode === 'gui' && v2View === 'assistant' && !moduleView ? (
               <GuiTabsBar activeTab={guiTab} onTabChange={setGuiTab} />
@@ -811,22 +838,21 @@ function Sidebar({ collapsed, onCollapse, onExpand }) {
                 ) : (
                 <>
                   {/* 主控agent 提示气泡：三张默认缺陷单卡片直接放进气泡 */}
-                  <div className="assistant-notice">
-                    <span className="assistant-notice__avatar" aria-hidden="true"><Command size={15} /></span>
-                    <div className="assistant-notice__main">
-                      <strong>主控Agent</strong>
-                      <div className="assistant-notice__bubble">
-                        <p>检测到以下缺陷单待确认，请及时处理：</p>
-                        {noticeTickets.length > 0 && (
-                          <div className="assistant-notice__cards">
-                            {noticeTickets.map((ticket) => (
-                              <TaskCard ticket={ticket} active={location.pathname === ticketPath(ticket)} key={ticket.id} onClick={() => openTicket(ticket)} />
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                  <AgentConversationMessage
+                    className="assistant-notice assistant-notice__message"
+                    message={{ id: 'task-center-notice', type: 'agent', actor: '主控Agent' }}
+                  >
+                    <div className="ticket-qa__bubble assistant-notice__bubble">
+                      <p>检测到以下缺陷单待确认，请及时处理：</p>
+                      {noticeTickets.length > 0 && (
+                        <div className="assistant-notice__cards">
+                          {noticeTickets.map((ticket) => (
+                            <TaskCard ticket={ticket} active={location.pathname === ticketPath(ticket)} key={ticket.id} onClick={() => openTicket(ticket)} />
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  </AgentConversationMessage>
                   {/* 会话联动工单的关单卡免「按 1 揭示」门禁，直接显示 */}
                   {filteredTickets.filter((ticket) => ticket.linkedChatId).map((ticket) => (
                     <TaskCard ticket={ticket} active={location.pathname === ticketPath(ticket)} key={ticket.id} onClick={() => openTicket(ticket)} />
@@ -911,6 +937,7 @@ export default function Shell() {
   const navigate = useNavigate()
   const cockpitActive = location.pathname === '/'
   const { chatDockOpen, kolaDemo, kolaNav, advanceKolaDemo, role, tickets, flowSteps, advanceOpsTicket } = useApp()
+  const shellRef = useRef(null)
   // 与 TopBar 一致的工作台上下文判断
   const workbenchContext =
     location.pathname.startsWith('/workbench') ||
@@ -968,13 +995,58 @@ export default function Shell() {
   }, [role, tickets, flowSteps, advanceOpsTicket])
 
   // 对话窗口打开时覆盖左侧列，点击返回回到面板
-  const dockVisible = chatDockOpen
+  // 全屏聊天页使用同一会话渲染器，但不再叠加右下角 Dock。
+  const dockVisible = chatDockOpen && !location.pathname.startsWith('/chat')
+
+  // 渐变时间轴挂在常驻外层；侧栏切换成对话窗时沿用当前位置，不发生跳变。
+  useEffect(() => {
+    const shell = shellRef.current
+    if (!shell || typeof shell.animate !== 'function') return undefined
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined
+
+    const styles = getComputedStyle(shell)
+    const parseSeconds = (name, fallback) => {
+      const value = Number.parseFloat(styles.getPropertyValue(name))
+      return Number.isFinite(value) && value > 0 ? value : fallback
+    }
+    const idleDuration = parseSeconds('--ops-thinking-duration-idle', 12)
+    const thinkingDuration = parseSeconds('--ops-thinking-duration-thinking', 7)
+    const start = styles.getPropertyValue('--ops-thinking-shift-start').trim() || '-22%'
+    const end = styles.getPropertyValue('--ops-thinking-shift-end').trim() || '22%'
+    const animation = shell.animate(
+      [{ '--ops-thinking-shift': start }, { '--ops-thinking-shift': end }],
+      {
+        duration: idleDuration * 1000,
+        direction: 'alternate',
+        easing: 'cubic-bezier(0.77, 0, 0.175, 1)',
+        iterations: Infinity,
+      },
+    )
+
+    const updateSpeed = () => {
+      const isThinking = Boolean(
+        shell.querySelector('.chat-think.is-live:not(.is-done)')
+        || shell.querySelector('.ticket-qa__stream > .ticket-qa__message:last-child.ticket-qa__message--user'),
+      )
+      const rate = isThinking ? idleDuration / thinkingDuration : 1
+      if (typeof animation.updatePlaybackRate === 'function') animation.updatePlaybackRate(rate)
+      else animation.playbackRate = rate
+    }
+    updateSpeed()
+    const observer = new MutationObserver(updateSpeed)
+    observer.observe(shell, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true })
+
+    return () => {
+      observer.disconnect()
+      animation.cancel()
+    }
+  }, [])
 
   // 展开态：左侧为 导航栏 + 面板 双列，需加宽左列
   const railVisible = !sidebarCollapsed
 
   return (
-    <div className={`app-shell is-v2 ${sidebarCollapsed ? 'sidebar-is-collapsed' : ''} ${dockVisible ? 'chat-dock-open' : ''} ${railVisible ? 'sidebar-with-rail' : ''}`}>
+    <div ref={shellRef} className={`app-shell is-v2 ${sidebarCollapsed ? 'sidebar-is-collapsed' : ''} ${dockVisible ? 'chat-dock-open' : ''} ${railVisible ? 'sidebar-with-rail' : ''}`}>
       <TopBar onOpenSidebar={() => setSidebarCollapsed(false)} />
       <Sidebar collapsed={sidebarCollapsed} onCollapse={() => setSidebarCollapsed(true)} onExpand={() => setSidebarCollapsed(false)} />
       {dockVisible ? <ChatDock /> : null}

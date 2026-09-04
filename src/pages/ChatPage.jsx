@@ -6,18 +6,22 @@ import {
   Check,
   CaretDown as ChevronDown,
   Circle,
-  Clock as Clock3,
   DotsThree as MoreHorizontal,
   Pencil,
   Plus,
   MagnifyingGlass as Search,
-  PaperPlaneTilt as Send,
   Sparkle as Sparkles,
   Trash as Trash2,
-  User as UserRound,
   X,
 } from '@phosphor-icons/react'
-import { agents, chatSessions as demoChatSessions } from '../data/demoData'
+import { agents } from '../data/demoData'
+import { useApp } from '../context/AppContext'
+import {
+  AgentConversation,
+  AgentConversationComposer,
+  AgentConversationSuggestions,
+} from '../components/AgentChatPanel'
+import { Button } from '@heroui/react'
 
 const starterPrompts = [
   '本期巡检最需要关注哪些风险？',
@@ -25,25 +29,6 @@ const starterPrompts = [
   '解释扎拉山逆变器温升的可能原因',
   '给出今天优先处理的三项任务',
 ]
-
-const fallbackSessions = [
-  {
-    id: 'ops-daily',
-    title: '今日运维风险研判',
-    agentId: 'diagnosis',
-    updatedAt: '16:42',
-    messages: [
-      { id: 'm-1', role: 'agent', text: '已汇总四座场站的实时告警、在办工单与巡检报告。当前优先关注扎拉山逆变器温升和两河口绝缘阻抗低。', at: '16:40' },
-    ],
-  },
-]
-
-function cloneSessions(source) {
-  return source.map((session) => ({
-    ...session,
-    messages: (session.messages ?? []).map((message) => ({ ...message })),
-  }))
-}
 
 function responseFor(text) {
   if (text.includes('两河口')) {
@@ -65,10 +50,25 @@ function nowTime() {
   return new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date())
 }
 
+function isAgentMessage(message) {
+  return message.type === 'agent'
+    || ['agent', 'assistant'].includes(message.role)
+    || message.kind === 'agent'
+    || message.sender === 'agent'
+}
+
 export default function ChatPage() {
   const navigate = useNavigate()
   const { chatId } = useParams()
-  const [sessions, setSessions] = useState(() => cloneSessions(demoChatSessions?.length ? demoChatSessions : fallbackSessions))
+  const {
+    chatThreads,
+    closeChat,
+    ensureChat,
+    selectChat,
+    updateChatMessages,
+    updateChatThread,
+    removeChat,
+  } = useApp()
   const [query, setQuery] = useState('')
   const [input, setInput] = useState('')
   const [renamingId, setRenamingId] = useState(null)
@@ -76,57 +76,87 @@ export default function ChatPage() {
   const [agentMenuOpen, setAgentMenuOpen] = useState(false)
   const messageEndRef = useRef(null)
 
+  // 全屏工作台与停靠栏只保留一份会话状态；工单同步线程仍由工单页展示。
+  const sessions = useMemo(
+    () => chatThreads.filter((thread) => !String(thread.id).startsWith('ticket-')),
+    [chatThreads],
+  )
+
   const visibleSessions = useMemo(() => {
     const keyword = query.trim().toLowerCase()
     if (!keyword) return sessions
-    return sessions.filter((session) => session.title.toLowerCase().includes(keyword))
+    return sessions.filter((session) => String(session.title ?? '').toLowerCase().includes(keyword))
   }, [query, sessions])
   const activeSession = sessions.find((session) => session.id === chatId) ?? sessions[0]
   const activeAgent = agents.find((agent) => agent.id === activeSession?.agentId) ?? agents[0]
+  const conversationMessages = useMemo(
+    () => (activeSession?.messages ?? []).map((message) => {
+      const fromAgent = isAgentMessage(message)
+      return {
+        ...message,
+        type: message.type ?? (message.role === 'staff' ? 'staff' : fromAgent ? 'agent' : 'user'),
+        actor: message.actor ?? (fromAgent ? activeAgent?.name ?? '诊断 Agent' : '我'),
+        time: message.time ?? message.at,
+        content: message.content ?? message.text,
+      }
+    }),
+    [activeAgent?.name, activeSession?.messages],
+  )
+
+  // 进入全屏工作台时关闭覆盖式 Dock，避免同一会话出现两份输入区。
+  useEffect(() => {
+    closeChat?.()
+  }, [closeChat])
 
   useEffect(() => {
     if (!activeSession) return
+    selectChat(activeSession.id)
     if (chatId !== activeSession.id) navigate(`/chat/${activeSession.id}`, { replace: true })
-  }, [activeSession, chatId, navigate])
+  }, [activeSession?.id, chatId, navigate, selectChat])
 
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ block: 'end' })
   }, [activeSession?.messages?.length])
 
+  useEffect(() => {
+    setInput('')
+    setAgentMenuOpen(false)
+  }, [activeSession?.id])
+
   if (!activeSession) return null
 
-  const updateSession = (id, update) => {
-    setSessions((current) => current.map((session) => session.id === id ? update(session) : session))
-  }
+  const updateSession = (id, update) => updateChatThread(id, update)
 
   const createSession = () => {
     const id = `chat-${Date.now()}`
+    const at = nowTime()
     const next = {
       id,
       title: '新建对话',
       agentId: agents[0]?.id ?? 'diagnosis',
-      updatedAt: nowTime(),
-      messages: [{ id: `${id}-welcome`, role: 'agent', text: '我已接入场站运行、巡检和工单数据。请选择一个问题开始分析。', at: nowTime() }],
+      updatedAt: at,
+      messages: [{ id: `${id}-welcome`, type: 'agent', role: 'agent', actor: agents[0]?.name ?? '诊断 Agent', content: '我已接入场站运行、巡检和工单数据。请选择一个问题开始分析。', time: at }],
     }
-    setSessions((current) => [next, ...current])
+    ensureChat(next)
     navigate(`/chat/${id}`)
   }
 
   const deleteSession = (id) => {
     const remaining = sessions.filter((session) => session.id !== id)
+    removeChat(id)
     if (remaining.length) {
-      setSessions(remaining)
       if (id === activeSession.id) navigate(`/chat/${remaining[0].id}`)
       return
     }
+    const at = nowTime()
     const replacement = {
       id: `chat-${Date.now()}`,
       title: '新建对话',
       agentId: agents[0]?.id ?? 'diagnosis',
-      updatedAt: nowTime(),
+      updatedAt: at,
       messages: [],
     }
-    setSessions([replacement])
+    ensureChat(replacement)
     navigate(`/chat/${replacement.id}`)
   }
 
@@ -145,21 +175,17 @@ export default function ChatPage() {
     const text = rawText.trim()
     if (!text) return
     const at = nowTime()
-    updateSession(activeSession.id, (session) => ({
-      ...session,
-      title: session.title === '新建对话' ? text.slice(0, 18) : session.title,
-      updatedAt: at,
-      messages: [
-        ...(session.messages ?? []),
-        { id: `${session.id}-u-${Date.now()}`, role: 'user', text, at },
-        { id: `${session.id}-a-${Date.now()}`, role: 'agent', text: responseFor(text), at },
-      ],
-    }))
+    const stamp = Date.now()
+    updateChatMessages(activeSession.id, (messages) => [
+      ...(messages ?? []),
+      { id: `${activeSession.id}-u-${stamp}`, type: 'user', role: 'user', actor: '我', content: text, time: at },
+      { id: `${activeSession.id}-a-${stamp}`, type: 'agent', role: 'agent', actor: activeAgent?.name ?? '诊断 Agent', content: responseFor(text), time: at },
+    ])
     setInput('')
   }
 
   const changeAgent = (agentId) => {
-    updateSession(activeSession.id, (session) => ({ ...session, agentId }))
+    updateSession(activeSession.id, { agentId })
     setAgentMenuOpen(false)
   }
 
@@ -172,7 +198,7 @@ export default function ChatPage() {
           </button>
           <div><p className="eyebrow">AI WORKSPACE</p><h1>智能体对话</h1></div>
         </div>
-        <button className="new-chat-button" type="button" onClick={createSession}><Plus size={16} />新建会话</button>
+        <Button className="new-chat-button ops-heroui-button" type="button" variant="secondary" size="sm" onPress={createSession}><Plus size={16} />新建会话</Button>
         <label className="chat-search">
           <Search size={15} />
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索会话" />
@@ -229,9 +255,9 @@ export default function ChatPage() {
             <div><h2>{activeAgent?.name ?? '诊断 Agent'}</h2><p><Circle size={7} fill="currentColor" />在线 · 已接入实时运行数据</p></div>
           </div>
           <div className="agent-picker">
-            <button className="button-secondary" type="button" onClick={() => setAgentMenuOpen((open) => !open)}>
+            <Button className="button-secondary ops-heroui-button" type="button" variant="secondary" size="sm" onPress={() => setAgentMenuOpen((open) => !open)}>
               切换智能体<ChevronDown size={14} />
-            </button>
+            </Button>
             {agentMenuOpen && (
               <div className="agent-menu">
                 {agents.map((agent) => (
@@ -246,53 +272,35 @@ export default function ChatPage() {
           <button className="icon-button" type="button" title="更多操作"><MoreHorizontal size={18} /></button>
         </header>
 
-        <section className="message-feed">
-          <div className="message-date"><span />今天<span /></div>
-          {(activeSession.messages ?? []).map((message) => {
-            const fromAgent = ['agent', 'assistant'].includes(message.role) || message.kind === 'agent' || message.sender === 'agent'
-            return (
-              <article className={`chat-message ${fromAgent ? 'agent' : 'user'}`} key={message.id}>
-                <span className="message-avatar">{fromAgent ? <Bot size={16} /> : <UserRound size={16} />}</span>
-                <div className="message-body">
-                  <header><strong>{fromAgent ? activeAgent?.name ?? '诊断 Agent' : '我'}</strong><time><Clock3 size={11} />{message.at ?? message.time}</time></header>
-                  <div className="message-bubble"><p>{message.text ?? message.content}</p></div>
-                </div>
-              </article>
-            )
-          })}
-          {!activeSession.messages?.length && (
+        <AgentConversation
+          messages={conversationMessages}
+          sendText={sendMessage}
+          streamClassName="message-feed"
+          beforeMessages={<div className="message-date"><span />今天<span /></div>}
+          empty={(
             <div className="chat-empty">
               <span><Sparkles size={24} /></span>
               <h2>开始一次运维分析</h2>
               <p>{activeAgent?.description ?? '智能体已接入场站、设备、巡检与工单数据。'}</p>
             </div>
           )}
-          <div ref={messageEndRef} />
-        </section>
-
-        <footer className="chat-composer-area">
-          <div className="prompt-chips">
-            {starterPrompts.map((prompt) => <button type="button" key={prompt} onClick={() => sendMessage(prompt)}>{prompt}</button>)}
-          </div>
-          <div className="chat-composer">
-            <span className="composer-agent"><Bot size={17} /></span>
-            <textarea
-              rows="1"
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey) {
-                  event.preventDefault()
-                  sendMessage()
-                }
-              }}
-              placeholder="询问场站、设备、巡检或工单问题"
-            />
-            <button className="send-button" type="button" onClick={() => sendMessage()} disabled={!input.trim()} title="发送">
-              <Send size={16} />
-            </button>
-          </div>
-        </footer>
+          afterMessages={<div ref={messageEndRef} />}
+          footer={(
+            <footer className="chat-composer-area">
+              <AgentConversationSuggestions
+                presets={starterPrompts}
+                onSuggestionSelect={(item) => sendMessage(typeof item === 'string' ? item : item?.question)}
+              />
+              <AgentConversationComposer
+                draft={input}
+                setDraft={setInput}
+                submitMessage={() => sendMessage()}
+                placeholder="询问场站、设备、巡检或工单问题"
+                ariaLabel="询问场站、设备、巡检或工单问题"
+              />
+            </footer>
+          )}
+        />
       </main>
     </div>
   )

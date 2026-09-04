@@ -1,3 +1,13 @@
+/* HeroUI v3 foundation. Keep the pilot globally available without importing
+   its preflight reset, which would override the legacy domain layout. */
+@import "tailwindcss/theme.css";
+@import "@heroui/styles/themes/default" layer(theme);
+@import "@heroui/styles/components/button.css" layer(components);
+@import "@heroui/styles/components/toggle-button.css" layer(components);
+@import "@heroui/styles/components/toggle-button-group.css" layer(components);
+@import "@heroui/styles/utilities";
+@import "@heroui/styles/variants";
+
 @font-face {
   font-family: "Manrope";
   src: url("/fonts/Manrope-ExtraBold.ttf") format("truetype");
@@ -21,11 +31,9 @@
   --ops-surface-inner: #252525;
   --ops-surface-raised: #2b2b2b;
   --ops-surface-action: #303030;
-  --ops-nav-active: #292a2b;
   --ops-text-primary: #f5f7f7;
   --ops-text-secondary: rgba(239, 244, 245, 0.66);
   --ops-text-tertiary: rgba(235, 241, 242, 0.42);
-  --ops-text-device: #dce2e3;
   --ops-accent-primary: #5291ff;
   --ops-photovoltaic: #1ccc65;
   --ops-storage: #37a2ff;
@@ -50,13 +58,27 @@
   --ops-success-soft: #6fc79b;
   --ops-accent-hover: #78adff;
   --ops-workspace-bg: #000000;
-  --ops-border-strong: var(--ops-border-strong);
+  --ops-border-strong: rgba(255, 255, 255, 0.16);
   --ops-segment-selected-bg: #eeeff0;
   --ops-segment-selected-text: var(--ops-bg-shell);
+  --ops-radius-panel: 4px;
+  --ops-radius-control: 12px;
+  /* Shared spacing tokens. Existing exact geometry stays in place until a
+     component is explicitly migrated to a token. */
+  --ops-space-1: 4px;
+  --ops-space-2: 2px;
+  --ops-space-3: 12px;
+  --ops-space-4: 16px;
+  --ops-space-5: 24px;
+  --ops-motion-fast: 160ms;
+  --ops-motion-standard: 260ms;
+  --ops-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ops-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ops-header-height: 64px;
   --ops-sidebar-width: 348px;
   --ops-sidebar-mini-width: 60px;
   --ops-chat-dock-width: 480px;
+  --ops-digital-twin-height: 440px;
 }
 
 /* 浅色模式：沿用深色的层级顺序，并按 iOS grouped surfaces / fills 重映射。 */
@@ -68,16 +90,13 @@
   --ops-surface-health: #fafafc;
   --ops-surface-diagnostic: #f7f7fa;
   --ops-surface-inner: #efeff4;
-  --ops-surface-raised: #ffffff;
+  --ops-surface-raised: var(--ops-surface-main);
   --ops-surface-action: #e5e5ea;
-  --ops-surface-panel: #ffffff;
-  --ops-nav-active: #e5e5ea;
   --ops-text-primary: #1c1c1e;
   --ops-text-secondary: #4a4a4f;
   --ops-text-tertiary: #6d6d72;
-  --ops-text-device: #3a3a3c;
   --ops-accent-primary: #0066cc;
-  --ops-photovoltaic: #20843d;
+  --ops-photovoltaic: var(--ops-success);
   --ops-storage: #0071c9;
   --ops-success: #20843d;
   --ops-warning: #d97706;
@@ -97,10 +116,48 @@
   --ops-ai-tint-text: #6e3cbc;
   --ops-success-soft: #3a7d4a;
   --ops-accent-hover: #0057b8;
-  --ops-workspace-bg: #e5e5ea;
+  --ops-workspace-bg: var(--ops-bg-canvas);
   --ops-border-strong: rgba(60, 60, 67, 0.24);
   --ops-segment-selected-bg: #ffffff;
   --ops-segment-selected-text: var(--ops-text-primary);
+}
+
+/* HeroUI semantic roles mapped to the project's canonical tokens. HeroUI's
+   theme and component CSS are layered; this unlayered mapping keeps one
+   source of truth for both systems. Source:
+   https://heroui.com/en/docs/react/getting-started/theming */
+:root {
+  --background: var(--ops-bg-canvas);
+  --foreground: var(--ops-text-primary);
+  --surface: var(--ops-surface-main);
+  --surface-foreground: var(--ops-text-primary);
+  --surface-secondary: var(--ops-surface-health);
+  --surface-secondary-foreground: var(--ops-text-primary);
+  --surface-tertiary: var(--ops-surface-diagnostic);
+  --surface-tertiary-foreground: var(--ops-text-primary);
+  --overlay: var(--ops-surface-diagnostic);
+  --overlay-foreground: var(--ops-text-primary);
+  --muted: var(--ops-text-tertiary);
+  --default: var(--ops-surface-raised);
+  --default-foreground: var(--ops-text-primary);
+  --accent: var(--ops-accent-primary);
+  --accent-foreground: #fff;
+  --success: var(--ops-success);
+  --success-foreground: #fff;
+  --warning: var(--ops-warning);
+  --warning-foreground: var(--ops-text-primary);
+  --danger: var(--ops-urgent);
+  --danger-foreground: #fff;
+  --segment: var(--ops-segment-selected-bg);
+  --segment-foreground: var(--ops-segment-selected-text);
+  --border: var(--ops-border);
+  --separator: var(--ops-border-soft);
+  --focus: var(--ops-accent-primary);
+  --field-background: var(--ops-surface-inner);
+  --field-foreground: var(--ops-text-primary);
+  --field-placeholder: var(--ops-text-tertiary);
+  --radius: var(--ops-radius-panel);
+  --spacing: 0.25rem;
 }
 
 * {
@@ -253,8 +310,10 @@ a:focus-visible {
   z-index: 40;
   grid-column: 1;
   grid-row: 2;
+  margin-bottom: var(--ops-space-2);
   border-right: 1px solid var(--ops-border);
   border-left: 0;
+  border-radius: var(--ops-radius-panel);
 }
 
 /* 版本2 对话窗头部：返回按钮紧贴标题左侧（其他 ticket-qa 面板保持 space-between） */
@@ -468,7 +527,7 @@ a:focus-visible {
   padding: 20px 22px;
   border: 1px solid var(--ops-border-soft);
   border-radius: 10px;
-  background: var(--ops-surface-panel);
+  background: var(--ops-surface-main);
 }
 
 /* 缺陷管理页表单：自适应列数铺满卡片，减少右侧空缺（仅本页生效，弹窗仍保持 2 列） */
@@ -494,7 +553,7 @@ a:focus-visible {
   border-spacing: 0;
   border: 1px solid var(--ops-border-soft);
   border-radius: 10px;
-  background: var(--ops-surface-panel);
+  background: var(--ops-surface-main);
   overflow: hidden;
 }
 
@@ -524,7 +583,7 @@ a:focus-visible {
 }
 
 .defect-list__id {
-  font-family: var(--ops-font-mono, monospace);
+  font-family: var(--ops-font-data);
   color: var(--ops-text-secondary);
 }
 
@@ -577,7 +636,7 @@ a:focus-visible {
   height: 32px;
   border-radius: 8px;
   border: 1px solid var(--ops-border-soft);
-  background: var(--ops-surface-panel);
+  background: var(--ops-surface-main);
   color: var(--ops-text-secondary);
   cursor: pointer;
   transition: color 0.15s ease, border-color 0.15s ease;
@@ -974,7 +1033,7 @@ a:focus-visible {
 .icon-button:hover,
 .icon-button.is-active {
   border-color: var(--ops-border);
-  background: var(--ops-nav-active);
+  background: var(--ops-surface-action);
   color: var(--ops-text-primary);
 }
 
@@ -1062,14 +1121,14 @@ a:focus-visible {
   padding: 9px 11px;
   border: 1px solid var(--ops-border-soft);
   border-radius: 4px;
-  background: #27292b;
+  background: var(--ops-surface-inner);
   text-align: left;
 }
 
 .role-options button:hover,
 .role-options button.is-selected {
   border-color: rgba(var(--ops-accent-rgb), 0.55);
-  background: #2b3035;
+  background: var(--ops-surface-raised);
 }
 
 .role-options span {
@@ -1247,13 +1306,12 @@ a:focus-visible {
   padding: 14px 12px 6px;
 }
 
-/* 版本2 任务中心卡片：与对话窗同款背景，底部自带紫色渐变光晕（双类选择器压过下方 .sidebar 主题组规则） */
+/* 版本2 任务中心面板：背景渐变由常驻外层时间轴驱动，与对话窗保持同一状态。 */
 .sidebar.sidebar--v2 {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   background-color: var(--ops-surface-main);
-  background-image: url('/chat/smart-assistant-background.png');
-  background-position: center bottom;
-  background-repeat: no-repeat;
-  background-size: 100% auto;
 }
 
 /* 版本2 左侧导航栏：对话 + 历史对话 icon（Smart Assistant 点 < 收起后独占左列，仅AI工作台上下文渲染） */
@@ -1261,10 +1319,6 @@ a:focus-visible {
   gap: 14px;
   padding-top: 14px;
   background-color: var(--ops-surface-main);
-  background-image: url('/chat/smart-assistant-background.png');
-  background-position: center bottom;
-  background-repeat: no-repeat;
-  background-size: 100% auto;
 }
 
 /* 版本2 展开态：导航栏与面板并排，外层容器占左列整格 */
@@ -1289,12 +1343,12 @@ a:focus-visible {
 
 /* 版本2 展开态左列 = 导航栏 60px + 面板 480px；对话窗打开时只覆盖面板区，导航栏保持可见 */
 .app-shell.is-v2.sidebar-with-rail {
-  grid-template-columns: calc(var(--ops-chat-dock-width) + var(--ops-sidebar-mini-width)) minmax(0, 1fr);
+  grid-template-columns: calc(var(--ops-chat-dock-width) + var(--ops-sidebar-mini-width) + var(--ops-space-2)) minmax(0, 1fr);
 }
 
 .app-shell.is-v2.sidebar-with-rail .chat-dock {
   width: var(--ops-chat-dock-width);
-  margin-left: var(--ops-sidebar-mini-width);
+  margin-left: calc(var(--ops-sidebar-mini-width) + var(--ops-space-2));
 }
 
 .rail-orb.is-active,
@@ -1425,7 +1479,7 @@ a:focus-visible {
   margin-top: 8px;
 }
 
-.kpi-card {
+.kpi-card-grid .kpi-card {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1665,7 +1719,7 @@ input::placeholder {
 
 .task-filters--main button.is-active {
   border-color: rgba(var(--ops-accent-rgb), 0.45);
-  background: var(--ops-nav-active);
+  background: var(--ops-surface-action);
   color: var(--ops-text-primary);
 }
 
@@ -1710,7 +1764,7 @@ input::placeholder {
 /* ===== 无用代码（待确认后删除） =====
 .filter-scroll button:hover,
 .filter-scroll button.is-active {
-  background: var(--ops-nav-active);
+  background: var(--ops-surface-action);
   color: #fff;
 }
 ===== 无用代码结束 ===== */
@@ -2231,80 +2285,92 @@ input::placeholder {
 }
 
 .page-enter {
-  animation: page-enter 240ms ease-out both;
+  animation: page-enter 240ms var(--ops-ease-out) both;
 }
 
 .cockpit-page {
   display: flex;
+  height: 100%;
   min-height: 100%;
   flex-direction: column;
-  gap: 2px;
-  padding: 2px;
+  gap: var(--ops-space-2);
+  padding: var(--ops-space-2);
+  overflow: hidden;
 }
 
-.kpi-grid {
+.cockpit-page > .kpi-grid {
   display: grid;
+  flex: 0 0 auto;
+  width: 100%;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 2px;
+  gap: var(--ops-space-2);
+  overflow: visible;
+  background: transparent;
 }
 
-.kpi-card {
+.cockpit-page .kpi-card {
   position: relative;
   min-width: 0;
-  min-height: 116px;
-  padding: 14px 16px;
+  min-height: 82px;
+  padding: 10px 14px;
   overflow: hidden;
-  border: 1px solid rgba(var(--ops-invert-rgb), 0.025);
-  border-radius: 4px;
+  border: 1px solid var(--ops-border-soft);
+  border-radius: var(--ops-radius-panel);
   background: var(--ops-surface-main);
+  animation: cockpit-card-enter var(--ops-motion-standard) var(--ops-ease-out) both;
+  animation-delay: calc(var(--kpi-index) * 36ms);
 }
 
-.kpi-label,
-.kpi-value,
-.kpi-foot {
+.cockpit-page .kpi-label,
+.cockpit-page .kpi-value,
+.cockpit-page .kpi-foot {
   display: flex;
   align-items: center;
 }
 
-.kpi-label {
+.cockpit-page .kpi-label {
   justify-content: space-between;
   color: var(--ops-text-tertiary);
 }
 
-.kpi-value {
-  align-items: baseline;
-  gap: 6px;
-  margin-top: 6px;
+.cockpit-page .kpi-label svg {
+  opacity: 0.52;
 }
 
-.kpi-value strong {
+.cockpit-page .kpi-value {
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.cockpit-page .kpi-value strong {
   overflow: hidden;
-  font-size: 27px;
+  font-size: 24px;
   font-weight: 800;
-  line-height: 1.25;
+  line-height: 1.2;
   text-overflow: ellipsis;
 }
 
-.kpi-value span {
+.cockpit-page .kpi-value span {
   color: var(--ops-text-secondary);
   font-size: 10px;
 }
 
-.kpi-foot {
+.cockpit-page .kpi-foot {
   justify-content: space-between;
   gap: 6px;
-  margin-top: 6px;
+  margin-top: 5px;
   color: var(--ops-text-tertiary);
   font-size: 10px;
 }
 
-.kpi-foot > span {
+.cockpit-page .kpi-foot > span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.kpi-foot em {
+.cockpit-page .kpi-foot em {
   display: inline-flex;
   align-items: center;
   font-style: normal;
@@ -2320,9 +2386,10 @@ input::placeholder {
 
 .digital-twin {
   position: relative;
-  min-height: 480px;
-  flex: 1 0 480px;
+  min-height: 0;
+  flex: 1 1 var(--ops-digital-twin-height);
   overflow: hidden;
+  border-radius: var(--ops-radius-panel);
   background: #0d0f10;
 }
 
@@ -2800,6 +2867,10 @@ input::placeholder {
   transform: translate(-50%, -50%);
 }
 
+.map-station-marker {
+  transform: translate(-50%, calc(-100% - 8px));
+}
+
 .map-station-marker:hover,
 .map-station-marker.is-selected,
 .fallback-station-marker:hover,
@@ -3065,6 +3136,125 @@ input::placeholder {
   background: rgba(var(--ops-accent-rgb), 0.16);
 }
 
+.map-model-settings {
+  position: absolute;
+  z-index: 8;
+  top: 80px;
+  left: 224px;
+  display: grid;
+  width: min(300px, calc(100% - 32px));
+  max-height: calc(100% - 160px);
+  gap: 8px;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid var(--ops-border-soft);
+  border-radius: 4px;
+  background: var(--ops-surface-diagnostic);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.4);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.map-model-settings > header,
+.map-model-settings > footer,
+.map-model-field > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.map-model-settings > header span {
+  display: grid;
+  gap: 2px;
+}
+
+.map-model-settings > header strong {
+  color: var(--ops-text-primary);
+  font-size: 12px;
+}
+
+.map-model-settings > header small,
+.map-model-settings > footer > span {
+  color: var(--ops-text-tertiary);
+  font-size: 10px;
+}
+
+.map-model-settings > header button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ops-text-tertiary);
+}
+
+.map-model-settings > header button:hover {
+  background: var(--ops-surface-inner);
+  color: var(--ops-text-primary);
+}
+
+.map-model-field {
+  display: grid;
+  gap: 2px;
+  color: var(--ops-text-secondary);
+  font-size: 11px;
+}
+
+.map-model-field output {
+  min-width: 72px;
+  color: var(--ops-text-primary);
+  font-family: var(--ops-font-data);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.map-model-field input[type='range'] {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--ops-accent-primary);
+  cursor: pointer;
+}
+
+.map-model-field select {
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius-panel);
+  background: var(--ops-surface-inner);
+  color: var(--ops-text-primary);
+  font: inherit;
+}
+
+.map-model-field select:focus-visible {
+  outline: 2px solid var(--ops-accent-primary);
+  outline-offset: 1px;
+}
+
+.map-model-settings > footer {
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.map-model-settings > footer button {
+  display: inline-flex;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  border-radius: 4px;
+  background: var(--ops-accent-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.map-model-settings > footer button:hover {
+  background: var(--ops-accent-hover);
+}
+
 .map-loading-state,
 .map-fallback-notice {
   position: absolute;
@@ -3221,23 +3411,28 @@ input::placeholder {
 }
 
 .agent-band {
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
   flex: 0 0 auto;
-  gap: 2px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--ops-space-2);
+  overflow: visible;
+  background: transparent;
 }
 
 .agent-status-card {
   position: relative;
   display: grid;
-  min-height: 96px;
+  min-height: 78px;
   grid-template-rows: auto auto 1fr;
   align-items: start;
   gap: 4px;
-  padding: 14px 72px 14px 16px;
-  border: 1px solid rgba(var(--ops-invert-rgb), 0.025);
-  border-radius: 4px;
+  padding: 10px 54px 10px 14px;
+  border: 1px solid var(--ops-border-soft);
+  border-radius: var(--ops-radius-panel);
   background: var(--ops-surface-main);
+  animation: cockpit-card-enter var(--ops-motion-standard) var(--ops-ease-out) both;
+  animation-delay: calc(80ms + var(--agent-index) * 40ms);
 }
 
 .agent-avatar {
@@ -3276,28 +3471,42 @@ input::placeholder {
 .agent-status-card__count b {
   color: var(--ops-text-primary);
   font-family: var(--ops-font-data);
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 800;
   letter-spacing: 0;
 }
 
 .agent-status-card em {
+  display: flex;
   align-self: end;
+  align-items: center;
+  gap: 6px;
   color: var(--ops-text-tertiary);
   font-size: 10px;
   font-style: normal;
 }
 
+.agent-status-card em::before {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--agent-color);
+  box-shadow: 0 0 0 0 rgba(var(--ops-accent-rgb), 0.24);
+  content: '';
+  animation: agent-live-pulse 2.2s ease infinite;
+}
+
 .agent-status-card__icon {
   position: absolute;
   top: 50%;
-  right: 16px;
+  right: 12px;
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   place-items: center;
-  opacity: 0.5;
+  opacity: 0.64;
   transform: translateY(-50%);
+  transition: opacity var(--ops-motion-fast) ease, transform var(--ops-motion-fast) var(--ops-ease-out);
 }
 
 .agent-card-gradient-defs {
@@ -3308,6 +3517,38 @@ input::placeholder {
 
 .agent-status-card__icon svg {
   display: block;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cockpit-page .kpi-card,
+  .agent-status-card {
+    transition: background var(--ops-motion-fast) ease, transform var(--ops-motion-fast) var(--ops-ease-out);
+  }
+
+  .cockpit-page .kpi-card:hover,
+  .agent-status-card:hover {
+    background: var(--ops-surface-health);
+    transform: translateY(-1px);
+  }
+
+  .agent-status-card:hover .agent-status-card__icon {
+    opacity: 0.92;
+    transform: translateY(-50%) scale(1.06);
+  }
+}
+
+@keyframes cockpit-card-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cockpit-card-fade {
+  from { opacity: 0.86; }
+  to { opacity: 1; }
+}
+
+@keyframes agent-live-pulse {
+  50% { box-shadow: 0 0 0 4px rgba(var(--ops-accent-rgb), 0); opacity: 0.72; }
 }
 
 .ops-page,
@@ -4371,10 +4612,6 @@ input::placeholder {
   grid-template-rows: 72px minmax(0, 1fr) auto;
   border-left: 1px solid var(--ops-border);
   background-color: var(--ops-surface-main);
-  background-image: url('/chat/smart-assistant-background.png');
-  background-position: center bottom;
-  background-repeat: no-repeat;
-  background-size: 100% auto;
 }
 
 /* 聊天窗口收起：右侧列宽归零，标题栏右侧出现圆形展开按钮 */
@@ -4495,6 +4732,7 @@ input::placeholder {
 
 .ticket-qa__main {
   display: flex;
+  max-width: 72%;
   min-width: 0;
   flex-direction: column;
   align-items: flex-start;
@@ -4532,7 +4770,7 @@ input::placeholder {
 
 .ticket-qa__message--agent .ticket-qa__bubble {
   border-color: rgba(var(--ops-violet-rgb), 0.22);
-  background: #24232a;
+  background: var(--ops-ai-tint-bg);
 }
 
 .ticket-qa__message--user .ticket-qa__bubble {
@@ -4793,7 +5031,7 @@ input::placeholder {
   margin: 8px 16px;
   padding: 3px;
   border: 1px solid var(--ops-border);
-  border-radius: 8px;
+  border-radius: var(--ops-radius-panel);
   background: var(--ops-surface-diagnostic);
 }
 
@@ -9713,17 +9951,56 @@ input::placeholder {
 /* ===== 无用代码（待确认后删除） =====
   .filter-scroll button { padding-inline: 5px; font-size: 10px; }
 ===== 无用代码结束 ===== */
-  .kpi-card { min-height: 102px; }
-  .digital-twin { min-height: 440px; flex-basis: 440px; }
-  .agent-status-card { grid-template-rows: auto auto 1fr; }
-  .agent-status-card em { display: none; }
-  .agent-avatar { display: none; }
+  :root { --ops-digital-twin-height: 420px; }
 }
 
 @media (max-width: 1380px) {
   .topbar { grid-template-columns: minmax(300px, 1fr) auto minmax(76px, 1fr); }
   .brand-copy span { max-width: 180px; }
-  .agent-band { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+  .sidebar-with-rail .cockpit-page .kpi-card {
+    padding-inline: 8px;
+  }
+
+  .sidebar-with-rail .cockpit-page .kpi-label svg {
+    display: none;
+  }
+
+  .sidebar-with-rail .cockpit-page .kpi-value {
+    gap: 3px;
+  }
+
+  .sidebar-with-rail .cockpit-page .kpi-value strong {
+    font-size: 17px;
+  }
+
+  .sidebar-with-rail .cockpit-page .kpi-value span {
+    font-size: 8px;
+  }
+
+  .sidebar-with-rail .cockpit-page .kpi-foot {
+    font-size: 9px;
+  }
+
+  .sidebar-with-rail .agent-status-card {
+    padding-inline: 9px;
+  }
+
+  .sidebar-with-rail .agent-status-card__icon {
+    display: none;
+  }
+
+  .sidebar-with-rail .timeline-event {
+    max-width: 88px;
+  }
+
+  .sidebar-with-rail .timeline-event strong {
+    max-width: 78px;
+  }
+
+  .sidebar-with-rail .timeline-event small {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -9735,11 +10012,21 @@ input::placeholder {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+
+  .cockpit-page .kpi-card,
+  .agent-status-card {
+    transform: none !important;
+    animation: cockpit-card-fade 120ms ease both !important;
+  }
+
+  .agent-status-card em::before {
+    animation: none !important;
+  }
 }
 
 /* Neutral surface pass: keep every operational layer in one desaturated family. */
 button {
-  border-radius: 12px;
+  border-radius: var(--ops-radius-control);
 }
 
 /*dead*/.filter-scroll button/*dead-end*/,
@@ -9767,7 +10054,6 @@ button {
   border-radius: 12px;
 }
 
-.topbar,
 .sidebar,
 .page-toolbar,
 .ticket-page__header {
@@ -9800,8 +10086,7 @@ button {
 .ticket-thread__scope,
 .ticket-message__body,
 .ticket-composer,
-.kpi-card,
-.agent-status-card,
+.kpi-card-grid .kpi-card,
 .metric-card,
 .ticket-stage-card,
 .ticket-stage-card.is-emphasis,
@@ -10413,10 +10698,6 @@ button {
 
 /* Global neutral-surface audit: hue is reserved for operational meaning, not
    page chrome, containers, or ordinary card borders. */
-[data-theme='dark'] {
-  --ops-nav-active: #292929;
-}
-
 [data-theme='dark'] .brand-mark img {
   filter: invert(1);
 }
@@ -10870,7 +11151,7 @@ button {
 
 .route-tabs button:hover,
 .route-tabs button.is-active {
-  background: var(--ops-nav-active);
+  background: var(--ops-surface-action);
   color: var(--ops-text-primary);
 }
 
@@ -12584,6 +12865,10 @@ button {
   content: '';
 }
 
+.gui-tabs__group.ops-heroui-toggle-group[data-slot='toggle-button-group'] {
+  gap: var(--ops-space-1);
+}
+
 .gui-tabs__add {
   margin-left: auto;
 }
@@ -12724,7 +13009,7 @@ button {
   display: block;
   height: 120px;
   border-radius: 14px;
-  background: var(--ops-bg-elevated, rgba(255, 255, 255, 0.06));
+  background: var(--ops-surface-inner);
   border: 1px solid var(--ops-border, rgba(255, 255, 255, 0.08));
   animation: skeletonBreath 1.6s ease-in-out infinite;
 }
@@ -12962,12 +13247,6 @@ button {
   --ops-invert-rgb: 255, 255, 255;
 }
 
-[data-theme='light'] .sidebar.sidebar--v2,
-[data-theme='light'] .sidebar.sidebar--rail,
-[data-theme='light'] .ticket-qa {
-  background-image: url('/chat/smart-assistant-background-light.png');
-}
-
 [data-theme='light'] .ticket-qa__brand {
   background-image: url('/chat/smart-assistant-header-light.png');
 }
@@ -13085,11 +13364,10 @@ button {
 
 /* 总览页非地图模块处于同一视觉层级。 */
 [data-theme='light'] .topbar,
-[data-theme='light'] .kpi-card,
+[data-theme='light'] .kpi-card-grid .kpi-card,
 [data-theme='light'] .scene-toolbar,
 [data-theme='light'] .map-station-detail,
-[data-theme='light'] .task-timeline,
-[data-theme='light'] .agent-status-card {
+[data-theme='light'] .task-timeline {
   background: var(--ops-surface-main);
 }
 
@@ -13100,10 +13378,9 @@ button {
 
 [data-theme='light'] .topbar,
 [data-theme='light'] .sidebar,
-[data-theme='light'] .kpi-card,
+[data-theme='light'] .kpi-card-grid .kpi-card,
 [data-theme='light'] .scene-toolbar,
 [data-theme='light'] .task-timeline,
-[data-theme='light'] .agent-status-card,
 [data-theme='light'] .defect-page__card {
   border-color: transparent;
   box-shadow: none;
@@ -13187,11 +13464,11 @@ button {
 }
 
 [data-theme] .app-shell.is-v2.sidebar-with-rail {
-  grid-template-columns: calc(var(--ops-chat-dock-width) + var(--ops-sidebar-mini-width) + 1px) minmax(0, 1fr);
+  grid-template-columns: calc(var(--ops-chat-dock-width) + var(--ops-sidebar-mini-width) + var(--ops-space-2)) minmax(0, 1fr);
 }
 
 [data-theme] .app-shell.is-v2.sidebar-with-rail .chat-dock {
-  margin-left: calc(var(--ops-sidebar-mini-width) + 1px);
+  margin-left: calc(var(--ops-sidebar-mini-width) + var(--ops-space-2));
 }
 
 [data-theme='light'] .sidebar--rail .icon-button.is-active {
@@ -13230,41 +13507,51 @@ button {
   opacity: 0.6;
 }
 
-[data-theme='light'] .task-timeline {
+[data-theme] .task-timeline {
   position: relative;
   z-index: 14;
-  margin-top: -88px;
+  margin-top: -86px;
+  border-radius: 0 0 var(--ops-radius-panel) var(--ops-radius-panel);
 }
 
-[data-theme='light'] .scene-toolbar,
-[data-theme='light'] .task-timeline {
+[data-theme] .scene-toolbar,
+[data-theme] .task-timeline {
   border-color: transparent;
-  background: rgba(255, 255, 255, 0.8);
   box-shadow: none;
   -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
 }
 
-[data-theme='light'] .twin-canvas {
+[data-theme='dark'] .scene-toolbar,
+[data-theme='dark'] .task-timeline {
+  background: rgba(17, 19, 20, 0.8);
+}
+
+[data-theme='light'] .scene-toolbar,
+[data-theme='light'] .task-timeline {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+[data-theme] .twin-canvas {
   inset: 0;
 }
 
-[data-theme='light'] .map-light-presets,
-[data-theme='light'] .map-station-detail {
+[data-theme] .map-light-presets,
+[data-theme] .map-station-detail {
   top: 80px;
 }
 
-[data-theme='light'] .map-layer-menu {
+[data-theme] .map-layer-menu {
   top: 122px;
 }
 
-[data-theme='light'] .map-legend,
-[data-theme='light'] .map-fallback-notice {
+[data-theme] .map-legend,
+[data-theme] .map-fallback-notice {
   bottom: 102px;
 }
 
-[data-theme='light'] .mapbox-canvas .mapboxgl-ctrl-bottom-left,
-[data-theme='light'] .mapbox-canvas .mapboxgl-ctrl-bottom-right {
+[data-theme] .mapbox-canvas .mapboxgl-ctrl-bottom-left,
+[data-theme] .mapbox-canvas .mapboxgl-ctrl-bottom-right {
   bottom: 96px;
 }
 
@@ -13484,14 +13771,14 @@ button {
   font-size: 15px;
 }
 
-.ticket-qa :is(
+:is(.ticket-qa, .chat-page, .ticket-page) :is(
   .ticket-qa__bubble p, .chat-defect-card__row,
   .chat-defect-card__choice-head, .ticket-qa__action-card, .ticket-qa__composer textarea
 ) {
   font-size: 14px;
 }
 
-.ticket-qa :is(
+:is(.ticket-qa, .chat-page, .ticket-page) :is(
   .chat-think__head, .chat-think__step-body p, .kola-checklist__item,
   .chat-defect-card__choice-desc, .ticket-qa__empty, .ticket-qa__suggestions button,
   .composer-mode__trigger, .composer-mode__menu button, .composer-toolbar__model
@@ -13504,7 +13791,7 @@ button {
   line-height: 1.5;
 }
 
-.ticket-qa :is(
+:is(.ticket-qa, .chat-page, .ticket-page) :is(
   .chat-defect-card__actions button,
   .ticket-qa__meta strong, .ticket-qa__meta time, .chat-defect-card__status,
   .chat-think__node-chip, .chat-think__step-index, .kola-checklist__tick
@@ -13538,6 +13825,42 @@ button {
   min-height: 32px;
 }
 
+/* Full-screen chat keeps its existing shell geometry; shared conversation
+   pieces consume the same spacing and typography as the dock/task views. */
+.chat-page .ticket-qa__main {
+  max-width: 72%;
+}
+
+.chat-page .ticket-qa__suggestions {
+  flex-wrap: nowrap;
+  padding-inline: 0;
+  overflow-x: auto;
+}
+
+.chat-page .ticket-qa__composer {
+  margin: 0;
+}
+
+/* Module summaries use the shared conversation message shell while keeping
+   the sidebar's existing inset and full-width business cards. */
+.task-list--assistant .ticket-qa__message.assistant-notice__message {
+  margin: 0 58px 4px 0;
+  padding-left: 20px;
+}
+
+.task-list--assistant .assistant-notice__message .ticket-qa__main {
+  max-width: none;
+  flex: 1;
+}
+
+.task-list--assistant .assistant-notice__message .ticket-qa__bubble {
+  width: 100%;
+}
+
+.sidebar-composer .ticket-qa__suggestions button {
+  font-size: 13px;
+}
+
 /* 设置面板：加深表面层级，分段控件按实际选项数等分。 */
 .settings-panel {
   box-shadow: 0 30px 76px rgba(0, 0, 0, 0.68);
@@ -13566,4 +13889,236 @@ button {
 
 [data-theme='light'] .settings-panel .role-options > button:not(.is-selected) {
   background: var(--ops-surface-diagnostic);
+}
+
+/* 对话/任务面板共用一条渐变；思考态只调同一层的明暗和速度，输入框保持原样。 */
+@property --ops-thinking-shift {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: -22%;
+}
+
+@property --ops-thinking-opacity {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0.4;
+}
+
+.app-shell.is-v2 {
+  --ops-thinking-duration-idle: 12s; /* 默认/停止态速度；数值越大越慢 */
+  --ops-thinking-duration-thinking: 7s; /* 思考态速度；数值越小越快 */
+  --ops-thinking-shift-start: -22%; /* 流动范围左端 */
+  --ops-thinking-shift-end: 22%; /* 流动范围右端 */
+  --ops-thinking-opacity: 0.4; /* 默认/停止态透明度；思考态由下方状态选择器提亮 */
+  --ops-thinking-gradient: radial-gradient(
+    100% 100% at 50% 100%, /* 从底到顶连续渐隐，横向随位置流动 */
+    rgba(var(--ops-violet-rgb), 0.22) 0%, /* 中心主亮度 */
+    rgba(var(--ops-accent-rgb), 0.18) 44%, /* 中段过渡亮度 */
+    rgba(var(--ops-success-rgb), 0.12) 66%, /* 外缘尾部亮度 */
+    rgba(var(--ops-violet-rgb), 0.08) 100% /* 顶部渐隐后的低透明度边缘 */
+  );
+  transition: --ops-thinking-opacity 1800ms var(--ops-ease-in-out);
+}
+
+:is(.sidebar.sidebar--v2, .chat-dock) {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+:is(.sidebar.sidebar--v2, .chat-dock)::after {
+  position: absolute;
+  z-index: -1;
+  top: 0; /* 覆盖层从对话框顶部开始，保证全高覆盖 */
+  bottom: 0; /* 覆盖层铺到对话框底部，避免底边露出底色 */
+  left: -70%; /* 预留左右运动缓冲，移动到两端时仍覆盖整个对话框 */
+  width: 300%; /* 渐变层宽度，配合左右流动 */
+  border-radius: 42px;
+  background: var(--ops-thinking-gradient);
+  background-color: rgba(var(--ops-violet-rgb), 0.08); /* 同一层的低透明度兜底，避免左右/底部露底 */
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  content: '';
+  filter: blur(26px); /* 柔化边缘；数值越大越散 */
+  pointer-events: none;
+  transform: translate3d(var(--ops-thinking-shift), 0, 0); /* 动画时间轴驱动的流动位置 */
+  opacity: var(--ops-thinking-opacity); /* 两个面板读取同一条常驻透明度时间轴 */
+}
+
+:is(
+  .app-shell.is-v2:has(.chat-think.is-live:not(.is-done)),
+  .app-shell.is-v2:has(.ticket-qa__stream > .ticket-qa__message:last-child.ticket-qa__message--user)
+) {
+  --ops-thinking-opacity: 0.7; /* 思考态透明度；切换由外层统一缓入缓出 */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.sidebar.sidebar--v2, .chat-dock)::after {
+    transform: none;
+  }
+}
+
+/* HeroUI bridge: migrated controls keep the legacy geometry while consuming
+   the same project tokens as the rest of the application. */
+.ops-heroui-button[data-slot='button'] {
+  height: 36px;
+  min-height: 36px;
+  padding-inline: var(--ops-space-3);
+  border: 0;
+  border-radius: var(--ops-radius-control);
+  background: var(--ops-surface-raised);
+  color: var(--ops-text-primary);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  transform: none;
+  transition: background-color var(--ops-motion-fast) var(--ops-ease-out), box-shadow var(--ops-motion-fast) var(--ops-ease-out), color var(--ops-motion-fast) var(--ops-ease-out);
+}
+
+.ops-heroui-button[data-slot='button']:hover:not(:disabled),
+.ops-heroui-button[data-slot='button'][data-hovered='true']:not(:disabled) {
+  background: var(--ops-surface-action);
+}
+
+.ops-heroui-button[data-slot='button']:active,
+.ops-heroui-button[data-slot='button'][data-pressed='true'] {
+  transform: none;
+}
+
+.ops-heroui-button.button-primary,
+.ops-heroui-button.button--primary,
+.ops-heroui-button[data-slot='button'].button--primary {
+  background: var(--ops-accent-primary);
+  color: #fff;
+  font-weight: 700;
+}
+
+.ops-heroui-button.button-primary:hover:not(:disabled),
+.ops-heroui-button.button--primary:hover:not(:disabled),
+.ops-heroui-button[data-slot='button'].button--primary[data-hovered='true']:not(:disabled) {
+  background: var(--ops-accent-hover);
+}
+
+.ops-heroui-button.button-secondary,
+.ops-heroui-button.button--secondary,
+.ops-heroui-button[data-slot='button'].button--secondary {
+  background: var(--ops-surface-raised);
+}
+
+.ops-heroui-button[data-slot='button']:disabled,
+.ops-heroui-button[data-slot='button'][aria-disabled='true'],
+.ops-heroui-button[data-slot='button'][data-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ops-heroui-button[data-slot='button']:focus-visible,
+.ops-heroui-button[data-slot='button'][data-focus-visible='true'] {
+  outline: 2px solid var(--ops-accent-primary);
+  outline-offset: 2px;
+}
+
+.ops-heroui-icon-button[data-slot='button'] {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-radius: 999px;
+}
+
+.ops-heroui-toggle-group[data-slot='toggle-button-group'] {
+  gap: 0;
+}
+
+.ops-heroui-toggle[data-slot='toggle-button'] {
+  height: 30px;
+  min-height: 30px;
+  padding: 0 var(--ops-space-3);
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ops-text-tertiary);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1;
+  transform: none;
+  transition: background-color var(--ops-motion-fast) var(--ops-ease-out), color var(--ops-motion-fast) var(--ops-ease-out);
+}
+
+.ops-heroui-toggle[data-slot='toggle-button']:hover,
+.ops-heroui-toggle[data-slot='toggle-button'][data-hovered='true'] {
+  background: var(--ops-surface-action);
+  color: var(--ops-text-primary);
+}
+
+.ops-heroui-toggle[data-slot='toggle-button'][data-selected='true'],
+.ops-heroui-toggle[data-slot='toggle-button'].is-selected {
+  background: var(--ops-segment-selected-bg);
+  color: var(--ops-segment-selected-text);
+  font-weight: 700;
+}
+
+.ops-heroui-toggle[data-slot='toggle-button']:active,
+.ops-heroui-toggle[data-slot='toggle-button'][data-pressed='true'] {
+  transform: none;
+}
+
+.ops-heroui-toggle[data-slot='toggle-button']:focus-visible,
+.ops-heroui-toggle[data-slot='toggle-button'][data-focus-visible='true'] {
+  outline: 2px solid var(--ops-accent-primary);
+  outline-offset: 1px;
+}
+
+.role-options.ops-heroui-toggle-group[data-slot='toggle-button-group'] {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: var(--ops-space-2);
+}
+
+.role-options.ops-heroui-toggle-group .ops-heroui-toggle[data-slot='toggle-button'] {
+  height: auto;
+  min-height: 56px;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 9px 11px;
+  border: 1px solid var(--ops-border-soft);
+  border-radius: var(--ops-radius-control);
+  background: var(--ops-surface-inner);
+  text-align: left;
+}
+
+.role-options.ops-heroui-toggle-group .ops-heroui-toggle[data-slot='toggle-button']:hover,
+.role-options.ops-heroui-toggle-group .ops-heroui-toggle[data-slot='toggle-button'][data-selected='true'],
+.role-options.ops-heroui-toggle-group .ops-heroui-toggle[data-slot='toggle-button'].is-selected {
+  border-color: rgba(var(--ops-accent-rgb), 0.55);
+  background: var(--ops-surface-raised);
+  color: var(--ops-text-primary);
+}
+
+.role-options.ops-heroui-toggle-group .ops-heroui-toggle small {
+  margin-top: var(--ops-space-1);
+  color: var(--ops-text-tertiary);
+  line-height: 1.4;
+}
+
+.segmented-control.ops-heroui-toggle-group[data-slot='toggle-button-group'] {
+  background: var(--ops-bg-shell);
+}
+
+.gui-tabs__tab.ops-heroui-toggle[data-slot='toggle-button'] {
+  height: auto;
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: 0;
+  background: transparent;
+  font-size: 13px;
+}
+
+.gui-tabs__tab.ops-heroui-toggle[data-slot='toggle-button'][data-selected='true'],
+.gui-tabs__tab.ops-heroui-toggle[data-slot='toggle-button'].is-active {
+  background: transparent;
+  color: var(--ops-text-primary);
 }

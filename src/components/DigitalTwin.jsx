@@ -3,18 +3,22 @@ import {
   BatteryCharging,
   Check,
   CaretRight as ChevronRight,
+  FloppyDisk,
   Stack as Layers3,
   Crosshair as LocateFixed,
   ArrowsOut as Maximize2,
   ArrowCounterClockwise as RotateCcw,
+  SlidersHorizontal,
   Sun,
   Warning as TriangleAlert,
   Wind,
+  X,
 } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { useApp } from '../context/AppContext'
 import { stations as fallbackStations } from '../data/demoData'
+import stationModelConfig from '../data/stationModelConfig.json'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN?.trim()
 const DEFAULT_CAMERA = {
@@ -36,6 +40,19 @@ const STATION_COORDINATES = {
   labashan: [101.508, 27.518],
 }
 const CORRIDOR_ORDER = ['labashan', 'zhalashan', 'kela', 'lianghekou']
+const STATION_MODEL_SOURCE_ID = 'ops-station-model-source'
+const STATION_MODEL_LAYER_ID = 'ops-station-model-layer'
+const STATION_MODEL_URL = '/models/station.glb'
+const STATION_MODEL_BLADE_NODE = '风能叶片'
+const STATION_MODEL_BLADE_STATE = 'bladeRotation'
+const STATION_MODEL_BLADE_PERIOD_MS = 6000
+const STATION_MODEL_NATURAL_HEIGHT = 7.125
+const MODEL_CONFIG_STORAGE_KEY = 'ops-station-model-config-v1'
+const MODEL_SCALE_MIN = 100
+const MODEL_SCALE_MAX = 10000
+const MODEL_ELEVATION_MIN = -100000
+const MODEL_ELEVATION_MAX = 100000
+const DEFAULT_STATION_MODEL_CONFIG = stationModelConfig
 const FALLBACK_POSITIONS = {
   lianghekou: { left: '25%', top: '32%' },
   kela: { left: '50%', top: '25%' },
@@ -85,6 +102,83 @@ function getMapAppearance(preset) {
   return MAP_APPEARANCE[preset === 'night' || preset === 'dusk' ? 'dark' : 'light']
 }
 
+function clampModelParameter(value, min, max, fallback) {
+  const number = Number(value)
+  return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback
+}
+
+function loadStationModelConfig() {
+  if (typeof window === 'undefined') return { ...DEFAULT_STATION_MODEL_CONFIG }
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(MODEL_CONFIG_STORAGE_KEY))
+    if (!stored) {
+      return {
+        ...DEFAULT_STATION_MODEL_CONFIG,
+        stationElevations: { ...DEFAULT_STATION_MODEL_CONFIG.stationElevations },
+      }
+    }
+    const storedElevations = stored?.stationElevations && typeof stored.stationElevations === 'object'
+      ? stored.stationElevations
+      : {}
+    const stationElevations = Object.fromEntries(
+      Object.entries(storedElevations).map(([stationId, value]) => [
+        stationId,
+        clampModelParameter(value, MODEL_ELEVATION_MIN, MODEL_ELEVATION_MAX, DEFAULT_STATION_MODEL_CONFIG.elevation),
+      ]),
+    )
+    return {
+      stationId: typeof stored?.stationId === 'string' ? stored.stationId : DEFAULT_STATION_MODEL_CONFIG.stationId,
+      scale: clampModelParameter(stored?.scale, MODEL_SCALE_MIN, MODEL_SCALE_MAX, DEFAULT_STATION_MODEL_CONFIG.scale),
+      rotation: clampModelParameter(stored?.rotation, -180, 180, DEFAULT_STATION_MODEL_CONFIG.rotation),
+      elevation: clampModelParameter(stored?.elevation, MODEL_ELEVATION_MIN, MODEL_ELEVATION_MAX, DEFAULT_STATION_MODEL_CONFIG.elevation),
+      stationElevations,
+      emissive: clampModelParameter(stored?.emissive, 0, 2, DEFAULT_STATION_MODEL_CONFIG.emissive),
+    }
+  } catch {
+    return { ...DEFAULT_STATION_MODEL_CONFIG }
+  }
+}
+
+function getStationElevation(config, stationId) {
+  return config.stationElevations?.[stationId] ?? config.elevation
+}
+
+function getStationModelTopHeight(config, stationId) {
+  return getStationElevation(config, stationId) + STATION_MODEL_NATURAL_HEIGHT * config.scale
+}
+
+function getModelTranslationExpression(config, stationIds) {
+  const expression = ['match', ['get', 'id']]
+  stationIds.forEach((stationId) => {
+    expression.push(stationId, ['literal', [0, 0, getStationElevation(config, stationId)]])
+  })
+  expression.push(['literal', [0, 0, config.elevation]])
+  return expression
+}
+
+function getModelRotationExpression(rotation) {
+  return [
+    'case',
+    ['==', ['get', 'part'], STATION_MODEL_BLADE_NODE],
+    [
+      'case',
+      ['!=', ['feature-state', STATION_MODEL_BLADE_STATE], null],
+      ['array', 'number', 3, ['feature-state', STATION_MODEL_BLADE_STATE]],
+      ['literal', [0, 0, 0]],
+    ],
+    ['literal', [0, 0, rotation]],
+  ]
+}
+
+function setStationBladeRotation(map, stationIds, angle) {
+  stationIds.forEach((stationId) => {
+    map.setFeatureState(
+      { source: STATION_MODEL_SOURCE_ID, sourceLayer: '', id: stationId },
+      { [STATION_MODEL_BLADE_STATE]: [angle, 0, 0] },
+    )
+  })
+}
+
 function getAlertCount(station) {
   return Array.isArray(station.alerts) ? station.alerts.length : Number(station.alerts || 0)
 }
@@ -108,7 +202,44 @@ function StationIcon({ type }) {
   return <Sun size={15} />
 }
 
-function addOperationalLayers(map, stations, corridor) {
+function addStationModelLayer(map, modelFeatures) {
+  if (!modelFeatures.features.length) return false
+
+  try {
+    const stationIds = modelFeatures.features.map((feature) => feature.properties.id)
+    const models = Object.fromEntries(modelFeatures.features.map((feature) => [
+      feature.properties.id,
+      {
+        uri: STATION_MODEL_URL,
+        position: feature.geometry.coordinates,
+        nodeOverrideNames: [STATION_MODEL_BLADE_NODE],
+        featureProperties: feature.properties,
+      },
+    ]))
+    map.addSource(STATION_MODEL_SOURCE_ID, { type: 'model', models })
+    setStationBladeRotation(map, stationIds, 0)
+    map.addLayer({
+      id: STATION_MODEL_LAYER_ID,
+      type: 'model',
+      source: STATION_MODEL_SOURCE_ID,
+      slot: 'top',
+      paint: {
+        'model-scale': [DEFAULT_STATION_MODEL_CONFIG.scale, DEFAULT_STATION_MODEL_CONFIG.scale, DEFAULT_STATION_MODEL_CONFIG.scale],
+        'model-rotation': getModelRotationExpression(DEFAULT_STATION_MODEL_CONFIG.rotation),
+        'model-translation': [0, 0, DEFAULT_STATION_MODEL_CONFIG.elevation],
+        'model-elevation-reference': 'sea',
+        'model-cast-shadows': true,
+        'model-receive-shadows': true,
+        'model-emissive-strength': DEFAULT_STATION_MODEL_CONFIG.emissive,
+      },
+    })
+    return true
+  } catch {
+    return false
+  }
+}
+
+function addOperationalLayers(map, stations, corridor, modelFeatures) {
   if (!map.getSource('ops-corridor')) {
     map.addSource('ops-corridor', { type: 'geojson', data: corridor })
     map.addLayer({
@@ -168,6 +299,8 @@ function addOperationalLayers(map, stations, corridor) {
       },
     })
   }
+
+  return addStationModelLayer(map, modelFeatures)
 }
 
 function applyWeather(map, enabled) {
@@ -267,18 +400,34 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
   const mapStations = useMemo(() => (stations || fallbackStations)
     .map((station) => ({ ...station, mapCoordinates: STATION_COORDINATES[station.id] }))
     .filter((station) => station.mapCoordinates), [stations])
+  const [modelConfig, setModelConfig] = useState(loadStationModelConfig)
+  const modelConfigRef = useRef(modelConfig)
+  modelConfigRef.current = modelConfig
   const [selectedId, setSelectedId] = useState(() => mapStations.find((station) => station.id === 'kela')?.id || mapStations[0]?.id)
+  const [modelStationId, setModelStationId] = useState(() => mapStations.some((station) => station.id === modelConfig.stationId)
+    ? modelConfig.stationId
+    : mapStations.find((station) => station.id === 'kela')?.id || mapStations[0]?.id)
   const [flat, setFlat] = useState(false)
   const [lightPreset, setLightPreset] = useState(() => theme === 'light' ? 'dawn' : 'dusk')
   const lightPresetRef = useRef(lightPreset)
   lightPresetRef.current = lightPreset
   const [layersOpen, setLayersOpen] = useState(false)
+  const [modelSettingsOpen, setModelSettingsOpen] = useState(true)
   const [terrainEnabled, setTerrainEnabled] = useState(true)
   const [weatherEnabled, setWeatherEnabled] = useState(() => theme === 'dark')
   const [markersVisible, setMarkersVisible] = useState(true)
+  const [modelVisible, setModelVisible] = useState(true)
+  const [modelSaveState, setModelSaveState] = useState('')
   const [mapReady, setMapReady] = useState(false)
   const [mapError, setMapError] = useState('')
+  const [modelAvailable, setModelAvailable] = useState(false)
+  const [modelError, setModelError] = useState('')
   const selected = mapStations.find((station) => station.id === selectedId) || mapStations[0]
+  const modelStation = mapStations.find((station) => station.id === modelStationId) || mapStations[0]
+
+  useEffect(() => {
+    if (!mapStations.some((station) => station.id === modelStationId)) setModelStationId(mapStations[0]?.id)
+  }, [mapStations, modelStationId])
 
   const stationFeatures = useMemo(() => ({
     type: 'FeatureCollection',
@@ -288,6 +437,17 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
       geometry: { type: 'Point', coordinates: station.mapCoordinates },
     })),
   }), [mapStations])
+
+  const stationModelFeatures = useMemo(() => {
+    return {
+      type: 'FeatureCollection',
+      features: mapStations.map((station) => ({
+        type: 'Feature',
+        properties: { id: station.id },
+        geometry: { type: 'Point', coordinates: station.mapCoordinates },
+      })),
+    }
+  }, [mapStations])
 
   const corridor = useMemo(() => ({
     type: 'Feature',
@@ -307,7 +467,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
     mapStations.forEach((station) => {
       const node = markerRefs.current.get(station.id)
       if (!node) return
-      const point = map.project(station.mapCoordinates)
+      const point = map.project(station.mapCoordinates, getStationModelTopHeight(modelConfigRef.current, station.id))
       const visible = point.x > -180 && point.y > -90 && point.x < canvas.clientWidth + 180 && point.y < canvas.clientHeight + 90
       node.style.transform = `translate3d(${point.x}px, ${point.y}px, 0)`
       node.style.opacity = visible ? '1' : '0'
@@ -317,6 +477,8 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
 
   useLayoutEffect(() => {
     setMapReady(false)
+    setModelAvailable(false)
+    setModelError('')
     let disposed = false
     let map
     let loaded = false
@@ -393,7 +555,9 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
                 'star-intensity': initialLightPreset === 'night' ? 0.08 : initialLightPreset === 'dusk' ? 0.02 : 0,
               })
             }
-            addOperationalLayers(map, stationFeatures, corridor)
+            const modelAdded = addOperationalLayers(map, stationFeatures, corridor, stationModelFeatures)
+            setModelAvailable(modelAdded)
+            if (!modelAdded) setModelError('电站模型图层加载失败')
             applyWeather(map, theme === 'dark')
           } catch {
             fail('地图地形图层加载失败，已切换降级视图')
@@ -412,6 +576,10 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
         map.on('error', (event) => {
           const message = event?.error?.message || ''
           if (!loaded && /401|403|access token|style/i.test(message)) fail('Mapbox 鉴权或地图样式加载失败')
+          if (loaded && /ops-station-model|station\.glb/i.test(message)) {
+            setModelAvailable(false)
+            setModelError('电站模型加载失败')
+          }
         })
         loadTimeout = window.setTimeout(() => {
           if (!loaded) fail('3D 地图加载超时')
@@ -433,7 +601,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
       }
       if (mapRef.current === map) mapRef.current = null
     }
-  }, [corridor, mapStyle, stationFeatures, syncMarkers])
+  }, [corridor, mapStyle, stationFeatures, stationModelFeatures, syncMarkers])
 
   useEffect(() => {
     setLightPreset(theme === 'light' ? 'dawn' : 'dusk')
@@ -487,6 +655,53 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
   }, [mapReady, terrainEnabled])
 
   useEffect(() => {
+    const map = mapRef.current
+    if (!mapReady || !map || !map.getLayer(STATION_MODEL_LAYER_ID)) return
+    try {
+      map.setLayoutProperty(STATION_MODEL_LAYER_ID, 'visibility', modelVisible ? 'visible' : 'none')
+    } catch {
+      // Keep the map usable if a style implementation does not expose model visibility.
+    }
+  }, [mapReady, modelVisible])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!mapReady || !map || !map.getLayer(STATION_MODEL_LAYER_ID)) return
+    try {
+      const scale = [modelConfig.scale, modelConfig.scale, modelConfig.scale]
+      map.setPaintProperty(STATION_MODEL_LAYER_ID, 'model-scale', scale)
+      map.setPaintProperty(STATION_MODEL_LAYER_ID, 'model-rotation', getModelRotationExpression(modelConfig.rotation))
+      map.setPaintProperty(
+        STATION_MODEL_LAYER_ID,
+        'model-translation',
+        getModelTranslationExpression(modelConfig, mapStations.map((station) => station.id)),
+      )
+      map.setPaintProperty(STATION_MODEL_LAYER_ID, 'model-emissive-strength', modelConfig.emissive)
+      syncMarkers()
+    } catch {
+      setModelError('电站模型参数应用失败')
+    }
+  }, [mapReady, mapStations, modelConfig, syncMarkers])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!active || !mapReady || !map || !modelAvailable || !modelVisible) return undefined
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined
+
+    const stationIds = mapStations.map((station) => station.id)
+    let animationFrameId
+    const frame = (timestamp) => {
+      if (map.getSource(STATION_MODEL_SOURCE_ID)) {
+        const angle = -((timestamp % STATION_MODEL_BLADE_PERIOD_MS) / STATION_MODEL_BLADE_PERIOD_MS) * 360
+        setStationBladeRotation(map, stationIds, angle)
+      }
+      animationFrameId = window.requestAnimationFrame(frame)
+    }
+    animationFrameId = window.requestAnimationFrame(frame)
+    return () => window.cancelAnimationFrame(animationFrameId)
+  }, [active, mapReady, mapStations, modelAvailable, modelVisible])
+
+  useEffect(() => {
     const resizeMap = () => window.setTimeout(() => mapRef.current?.resize(), 120)
     document.addEventListener('fullscreenchange', resizeMap)
     return () => document.removeEventListener('fullscreenchange', resizeMap)
@@ -503,6 +718,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
 
   const selectStation = useCallback((station) => {
     setSelectedId(station.id)
+    setModelStationId(station.id)
     const map = mapRef.current
     if (mapReady && map) {
       map.easeTo({ center: station.mapCoordinates, zoom: Math.max(map.getZoom(), 8.15), duration: 720, essential: true })
@@ -510,13 +726,39 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
   }, [mapReady])
 
   const resetView = () => {
-    setSelectedId(mapStations.find((station) => station.id === 'kela')?.id || mapStations[0]?.id)
+    const resetStationId = mapStations.find((station) => station.id === 'kela')?.id || mapStations[0]?.id
+    setSelectedId(resetStationId)
+    setModelStationId(resetStationId)
     mapRef.current?.easeTo({ ...DEFAULT_CAMERA, pitch: flat ? 0 : DEFAULT_CAMERA.pitch, bearing: flat ? 0 : DEFAULT_CAMERA.bearing, duration: 900, essential: true })
   }
 
   const focusSelected = () => {
     if (!selected) return
     mapRef.current?.flyTo({ center: selected.mapCoordinates, zoom: 10.2, pitch: flat ? 0 : 66, bearing: flat ? 0 : -24, speed: 0.8, curve: 1.3, essential: true })
+  }
+
+  const updateModelConfig = (property, value) => {
+    setModelConfig((current) => ({ ...current, [property]: Number(value) }))
+    setModelSaveState('')
+  }
+
+  const updateStationElevation = (value) => {
+    if (!modelStation) return
+    const elevation = clampModelParameter(value, MODEL_ELEVATION_MIN, MODEL_ELEVATION_MAX, DEFAULT_STATION_MODEL_CONFIG.elevation)
+    setModelConfig((current) => ({
+      ...current,
+      stationElevations: { ...current.stationElevations, [modelStation.id]: elevation },
+    }))
+    setModelSaveState('')
+  }
+
+  const saveModelConfig = () => {
+    try {
+      window.localStorage.setItem(MODEL_CONFIG_STORAGE_KEY, JSON.stringify({ ...modelConfig, stationId: modelStationId }))
+      setModelSaveState('saved')
+    } catch {
+      setModelSaveState('error')
+    }
   }
 
   const toggleFullscreen = async () => {
@@ -544,7 +786,8 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
             <button className={!flat ? 'is-active' : ''} type="button" onClick={() => setFlat(false)}>3D</button>
             <button className={flat ? 'is-active' : ''} type="button" onClick={() => setFlat(true)}>平面</button>
           </div>
-          <button className={layersOpen ? 'is-active' : ''} type="button" title="图层" aria-pressed={layersOpen} onClick={() => setLayersOpen((value) => !value)}><Layers3 size={16} /></button>
+          <button className={layersOpen ? 'is-active' : ''} type="button" title="图层" aria-pressed={layersOpen} onClick={() => { setModelSettingsOpen(false); setLayersOpen((value) => !value) }}><Layers3 size={16} /></button>
+          <button className={modelSettingsOpen ? 'is-active' : ''} type="button" title="模型参数" aria-pressed={modelSettingsOpen} disabled={!modelAvailable} onClick={() => { setLayersOpen(false); setModelSettingsOpen((value) => !value) }}><SlidersHorizontal size={16} /></button>
           <button type="button" title="定位选中电站" onClick={focusSelected} disabled={!mapReady}><LocateFixed size={16} /></button>
           <button type="button" title="复位视角" onClick={resetView} disabled={!mapReady}><RotateCcw size={16} /></button>
           <button type="button" title="切换全屏" onClick={toggleFullscreen}><Maximize2 size={16} /></button>
@@ -595,7 +838,43 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
             <button type="button" role="switch" aria-checked={terrainEnabled} onClick={() => setTerrainEnabled((value) => !value)}><span>三维地形与流域链路</span><i>{terrainEnabled ? <Check size={12} /> : null}</i></button>
             <button type="button" role="switch" aria-checked={weatherEnabled} onClick={() => setWeatherEnabled((value) => !value)}><span>高海拔气象粒子</span><i>{weatherEnabled ? <Check size={12} /> : null}</i></button>
             <button type="button" role="switch" aria-checked={markersVisible} onClick={() => setMarkersVisible((value) => !value)}><span>电站状态标记</span><i>{markersVisible ? <Check size={12} /> : null}</i></button>
+            <button type="button" role="switch" aria-checked={modelVisible} disabled={!modelAvailable} onClick={() => setModelVisible((value) => !value)}><span>电站三维模型{modelError ? ' · 不可用' : ''}</span><i>{modelVisible && modelAvailable ? <Check size={12} /> : null}</i></button>
           </div>
+        ) : null}
+
+        {modelSettingsOpen ? (
+          <form className="map-model-settings" aria-label="电站模型参数" onSubmit={(event) => { event.preventDefault(); saveModelConfig() }}>
+            <header>
+              <span><strong>模型参数</strong><small>即时预览 · 四个电站</small></span>
+              <button type="button" title="关闭模型参数" aria-label="关闭模型参数" onClick={() => setModelSettingsOpen(false)}><X size={15} /></button>
+            </header>
+            <label className="map-model-field">
+              <span>调整电站</span>
+              <select value={modelStation?.id || ''} aria-label="选择要调整高度的电站" onChange={(event) => setModelStationId(event.target.value)}>
+                {mapStations.map((station) => <option key={station.id} value={station.id}>{station.shortName || station.name}</option>)}
+              </select>
+            </label>
+            <label className="map-model-field">
+              <span>显示比例 <output>{Math.round(modelConfig.scale).toLocaleString()}</output></span>
+              <input type="range" min={MODEL_SCALE_MIN} max={MODEL_SCALE_MAX} step="50" value={modelConfig.scale} aria-label="模型显示比例" onChange={(event) => updateModelConfig('scale', event.target.value)} />
+            </label>
+            <label className="map-model-field">
+              <span>水平朝向 <output>{modelConfig.rotation}°</output></span>
+              <input type="range" min="-180" max="180" step="1" value={modelConfig.rotation} aria-label="模型水平朝向" onChange={(event) => updateModelConfig('rotation', event.target.value)} />
+            </label>
+            <label className="map-model-field">
+              <span>离地高度 <output>{Math.round(getStationElevation(modelConfig, modelStation?.id)).toLocaleString()} m</output></span>
+              <input type="range" min={MODEL_ELEVATION_MIN} max={MODEL_ELEVATION_MAX} step="100" value={getStationElevation(modelConfig, modelStation?.id)} aria-label="模型离地高度" onChange={(event) => updateStationElevation(event.target.value)} />
+            </label>
+            <label className="map-model-field">
+              <span>材质亮度 <output>{modelConfig.emissive.toFixed(2)}</output></span>
+              <input type="range" min="0" max="2" step="0.01" value={modelConfig.emissive} aria-label="模型材质亮度" onChange={(event) => updateModelConfig('emissive', event.target.value)} />
+            </label>
+            <footer>
+              <span role="status" aria-live="polite">{modelSaveState === 'saved' ? '参数已保存' : modelSaveState === 'error' ? '保存失败' : '调整立即生效'}</span>
+              <button type="submit"><FloppyDisk size={14} />保存参数</button>
+            </footer>
+          </form>
         ) : null}
 
         {!mapReady && !mapError ? <div className="map-loading-state"><span /><strong>正在建立 3D 地形</strong><small>加载 Mapbox Standard 与高程数据</small></div> : null}

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { basename, resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 
 const SOLAR_PLANT_PACKAGE_PATH = '/node_modules/solar-plant-monitor-embed/'
 
@@ -80,7 +81,7 @@ export default defineConfig({
   // Relative asset URLs allow the production build to run inside the
   // self-contained macOS WebKit launcher as well as behind any web server.
   base: './',
-  plugins: [solarPlantMonitorAssets(), react()],
+  plugins: [solarPlantMonitorAssets(), react(), tailwindcss()],
   optimizeDeps: {
     exclude: ['solar-plant-monitor-embed'],
     include: [

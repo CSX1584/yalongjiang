@@ -11,6 +11,7 @@ import {
 } from '@phosphor-icons/react'
 import { useApp } from '../context/AppContext'
 import { stations } from '../data/demoData'
+import { Button } from '@heroui/react'
 
 const pairedSections = ['station-health', 'problem-map']
 
@@ -246,9 +247,9 @@ export default function ReportContent({ sections }) {
                             <div><span>待办问题</span><strong>{item.issues} 项</strong></div>
                             <div><span>综合状态</span><strong>{item.status}</strong></div>
                           </div>
-                          <button className="button-secondary" type="button" onClick={() => navigate(`/station/${item.stationId}`)}>
+                          <Button className="button-secondary ops-heroui-button" type="button" variant="secondary" size="sm" onPress={() => navigate(`/station/${item.stationId}`)}>
                             <MapPin size={15} />进入电站详情
-                          </button>
+                          </Button>
                         </div>
                       )}
 

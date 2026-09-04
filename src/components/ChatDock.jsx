@@ -258,11 +258,12 @@ export default function ChatDock() {
   const resolveReply = useChatCommands(threadId)
   // 侧栏输入框发送时透传的预填文案，对话窗挂载后消费一次
   const seedDraft = chatDraftSeed?.threadId === threadId ? chatDraftSeed.text : ''
-  const chat = useAgentChat(setMessages, resolveReply, SUGGESTION_PRESETS, seedDraft)
+  const chat = useAgentChat(setMessages, resolveReply, SUGGESTION_PRESETS, seedDraft, threadId)
 
   useEffect(() => {
     if (seedDraft) clearChatDraftSeed()
   }, [seedDraft, clearChatDraftSeed])
+
 
   if (!chatDockOpen) return null
 

@@ -21,6 +21,7 @@ import {
 } from '@phosphor-icons/react'
 import { useApp } from '../context/AppContext'
 import { stations } from '../data/demoData'
+import { Button, ToggleButton, ToggleButtonGroup } from '@heroui/react'
 
 const defaultParameters = [
   { label: '直流输入电压', value: '1,086', unit: 'V', state: '正常' },
@@ -156,9 +157,9 @@ export default function DevicePage() {
           </div>
           <p>{station.name} · {device.type} · SN {device.sn ?? 'YLJ-PV-24081016'} · {device.model}</p>
         </div>
-        <button className="button-secondary" type="button" onClick={() => setDiagnosisState('running')} disabled={diagnosisState === 'running'}>
+        <Button className="button-secondary ops-heroui-button" type="button" variant="secondary" size="sm" onPress={() => setDiagnosisState('running')} isDisabled={diagnosisState === 'running'}>
           <Sparkles size={15} />{diagnosisState === 'running' ? '诊断中…' : '发起智能诊断'}
-        </button>
+        </Button>
       </header>
 
       <main className="device-workspace">
@@ -184,11 +185,21 @@ export default function DevicePage() {
           <div className="trend-card">
             <div className="panel-heading">
               <div><p className="eyebrow">TEMPERATURE TREND</p><h2>温度与功率趋势</h2></div>
-              <div className="segmented-control compact">
+              <ToggleButtonGroup
+                className="segmented-control compact ops-heroui-toggle-group"
+                aria-label="趋势时间范围"
+                selectionMode="single"
+                disallowEmptySelection
+                selectedKeys={new Set([range])}
+                onSelectionChange={(keys) => {
+                  const next = String([...keys][0] ?? '')
+                  if (next) setRange(next)
+                }}
+              >
                 {['24h', '7d', '30d'].map((item) => (
-                  <button className={range === item ? 'is-selected' : ''} type="button" key={item} onClick={() => setRange(item)}>{item}</button>
+                  <ToggleButton className={range === item ? 'is-selected ops-heroui-toggle' : 'ops-heroui-toggle'} id={item} key={item}>{item}</ToggleButton>
                 ))}
-              </div>
+              </ToggleButtonGroup>
             </div>
             <div className="chart-legend"><span className="power">输出功率 kW</span><span className="temperature">机内温度 °C</span></div>
             <svg className="device-trend-chart" viewBox="0 0 760 230" role="img" aria-label={`${range}温度与功率趋势图`}>
@@ -261,9 +272,9 @@ export default function DevicePage() {
               <CircleGauge size={42} />
               <h3>等待诊断</h3>
               <p>将读取设备实时数据、近 30 天告警与同型号设备基线。</p>
-              <button className="button-primary" type="button" onClick={() => setDiagnosisState('running')}>
+              <Button className="button-primary ops-heroui-button" type="button" variant="primary" size="sm" onPress={() => setDiagnosisState('running')}>
                 <Sparkles size={15} />开始智能诊断
-              </button>
+              </Button>
             </div>
           )}
 
@@ -299,9 +310,9 @@ export default function DevicePage() {
                 <Wrench size={16} />
                 <div><h3>建议动作</h3><p>{diagnosis.recommendation}</p></div>
               </section>
-              <button className="button-primary" type="button" onClick={createDiagnosisTask} disabled={taskCreated}>
+              <Button className="button-primary ops-heroui-button" type="button" variant="primary" size="sm" onPress={createDiagnosisTask} isDisabled={taskCreated}>
                 <ClipboardList size={15} />{taskCreated ? '已加入处置任务' : '生成处置任务'}
-              </button>
+              </Button>
             </div>
           )}
 

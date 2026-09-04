@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { CaretLeft, Check } from '@phosphor-icons/react'
 import { useApp } from '../context/AppContext'
 import { fieldsFromRows } from '../components/TicketStageContent'
+import { Button } from '@heroui/react'
 
 // 工单输入项：与 AI工作台工单编辑弹窗（两河口热斑消缺工单）字段完全一致
 const WORK_ORDER_ROWS = [
@@ -104,8 +105,8 @@ export default function WorkOrderPage() {
             ))}
           </div>
           <div className="ticket-stage-defect-form__actions">
-            <button className="button-secondary" type="button" onClick={() => showToast?.('工单内容已保存', 'success')}>保存</button>
-            <button className="button-primary" type="button" onClick={() => showToast?.('工单已提交，待运维负责人批准', 'success')}><Check size={15} />提交审批</button>
+            <Button className="button-secondary ops-heroui-button" type="button" variant="secondary" size="sm" onPress={() => showToast?.('工单内容已保存', 'success')}>保存</Button>
+            <Button className="button-primary ops-heroui-button" type="button" variant="primary" size="sm" onPress={() => showToast?.('工单已提交，待运维负责人批准', 'success')}><Check size={15} />提交审批</Button>
           </div>
         </form>
       </div>
