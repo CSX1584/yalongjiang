@@ -702,6 +702,13 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
     try {
       const appearance = getMapAppearance(lightPreset)
       map.setConfigProperty?.('basemap', 'lightPreset', lightPreset)
+      const sunByPreset = {
+        dawn: { direction: [110, 28], color: '#ffd8a8', intensity: 0.65 },
+        day: { direction: [30, 55], color: '#fff2d6', intensity: 0.9 },
+        dusk: { direction: [250, 24], color: '#f2b08a', intensity: 0.5 },
+        night: { direction: [180, 18], color: '#9bb7e8', intensity: 0.18 },
+      }[lightPreset]
+      map.setLights?.([{ id: 'ops-ambient', type: 'ambient', properties: { color: '#ffffff', intensity: lightPreset === 'night' ? 0.18 : 0.35 } }, { id: 'ops-sun', type: 'directional', properties: { ...sunByPreset, 'cast-shadows': true, 'shadow-intensity': 0.85, 'shadow-quality': 1 } }])
       if (theme === 'dark') {
         Object.entries(appearance.colors).forEach(([property, value]) => {
           map.setConfigProperty?.('basemap', property, value)
