@@ -606,7 +606,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
               properties: {
                 direction: [30, 55],
                 'cast-shadows': true,
-                'shadow-intensity': 1,
+                'shadow-intensity': 0.85,
                 'shadow-quality': 1,
                 intensity: 0.9,
                 color: '#fff2d6',
