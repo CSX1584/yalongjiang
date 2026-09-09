@@ -46,8 +46,9 @@ for (const model of ['/models/station.glb', '/models/station_light.glb']) {
   let modelSource
   const map = { addSource(id, value) { modelSource = value }, setFeatureState() {}, addLayer(value) { layer = value } }
   assert.equal(context.add(map, { features: [{ properties: { id: 'test' }, geometry: { coordinates: [101, 28] } }] }, model), true)
+  assert.equal(modelSource.models.test.lightOverrides?.['light-directional-intensity'], 1)
   assert.equal(layer.paint['model-cast-shadows'], true)
   assert.equal(layer.paint['model-receive-shadows'], true)
-  assert.equal(modelSource.models.test.lightOverrides?.['light-ambient-intensity'], model.includes('_light') ? 0.7 : undefined)
+  assert.equal(modelSource.models.test.lightOverrides?.['light-ambient-intensity'], 0.5)
 }
 console.log('Model shadows and saved lighting migration passed.')

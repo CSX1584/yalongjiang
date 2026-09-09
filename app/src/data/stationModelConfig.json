@@ -1,8 +1,8 @@
 {
-  "stationId": "zhalashan",
-  "scale": 10000,
+  "stationId": "lianghekou",
+  "scale": 5500,
   "rotation": 141,
-  "elevation": 0,
+  "elevation": -23100,
   "stationElevations": {
     "lianghekou": -44000,
     "kela": -45200,
