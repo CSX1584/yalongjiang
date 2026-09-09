@@ -724,6 +724,10 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
       const appearance = getMapAppearance(lightPreset)
       const sunByPreset = SUN_LIGHT_BY_PRESET[lightPreset] || SUN_LIGHT_BY_PRESET.day
       try { map.setConfigProperty?.('basemap', 'lightPreset', lightPreset) } catch { /* style may not expose basemap config */ }
+      if (theme === 'light' && lightPreset === 'day' && !sunAzimuthCustom && !customSunLightsRef.current) {
+        const lights = map.getLights?.() || []
+        if (lights.some((light) => light.type === 'directional')) officialSunLightsRef.current = cloneLights(lights)
+      }
       if (theme === 'dark') {
         const direction = sunAzimuthCustom && lightPreset === 'day'
           ? [sunAzimuth, sunByPreset.direction[1]]
