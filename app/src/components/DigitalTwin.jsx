@@ -21,6 +21,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { useApp } from '../context/AppContext'
 import { stations as fallbackStations } from '../data/demoData'
 import stationModelConfig from '../data/stationModelConfig.json'
+import { upgradeModelShadows } from './modelShadowQuality'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN?.trim()
 // 临时录屏精简：录制结束后改为 false，恢复浮层和底图标注。
@@ -648,6 +649,10 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
         })
         map.on('move', syncMarkers)
         map.on('resize', syncMarkers)
+        // After the first shadow pass, replace its allocations once with 4K cascades.
+        map.once('load', () => {
+          if (!disposed) upgradeModelShadows(map, mapboxgl.version)
+        })
         map.on('load', () => {
           if (disposed) return
           loaded = true
