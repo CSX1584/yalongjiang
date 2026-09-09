@@ -1,0 +1,120 @@
+import { useEffect, useMemo } from 'react'
+import { ExtrudeGeometry, Shape } from 'three'
+import {
+  clampCoverageOpacity,
+  isCoverageReduced,
+} from './materialCoverage.js'
+
+const ignoreRaycast = () => null
+
+function createRoundedFoundationGeometry(width, depth, height, radius) {
+  const halfWidth = width / 2
+  const halfDepth = depth / 2
+  const safeRadius = Math.max(
+    0.001,
+    Math.min(radius, halfWidth, halfDepth),
+  )
+  const shape = new Shape()
+
+  shape.moveTo(-halfWidth + safeRadius, -halfDepth)
+  shape.lineTo(halfWidth - safeRadius, -halfDepth)
+  shape.quadraticCurveTo(
+    halfWidth,
+    -halfDepth,
+    halfWidth,
+    -halfDepth + safeRadius,
+  )
+  shape.lineTo(halfWidth, halfDepth - safeRadius)
+  shape.quadraticCurveTo(
+    halfWidth,
+    halfDepth,
+    halfWidth - safeRadius,
+    halfDepth,
+  )
+  shape.lineTo(-halfWidth + safeRadius, halfDepth)
+  shape.quadraticCurveTo(
+    -halfWidth,
+    halfDepth,
+    -halfWidth,
+    halfDepth - safeRadius,
+  )
+  shape.lineTo(-halfWidth, -halfDepth + safeRadius)
+  shape.quadraticCurveTo(
+    -halfWidth,
+    -halfDepth,
+    -halfWidth + safeRadius,
+    -halfDepth,
+  )
+
+  const geometry = new ExtrudeGeometry(shape, {
+    bevelEnabled: false,
+    curveSegments: 8,
+    depth: height,
+    steps: 1,
+  })
+  geometry.rotateX(Math.PI / 2)
+  geometry.computeVertexNormals()
+  return geometry
+}
+
+export function TemplateFoundation({
+  bounds,
+  color = '#222222',
+  coverageOpacity = 1,
+  interactive = true,
+  surfaceOpacity,
+  unlit = false,
+}) {
+  const [width, height, depth] = bounds.size
+  const geometry = useMemo(
+    () =>
+      createRoundedFoundationGeometry(
+        width,
+        depth,
+        height,
+        bounds.cornerRadius,
+      ),
+    [bounds.cornerRadius, depth, height, width],
+  )
+
+  useEffect(() => () => geometry.dispose(), [geometry])
+  const resolvedCoverageOpacity = clampCoverageOpacity(coverageOpacity)
+  const coverageReduced = isCoverageReduced(resolvedCoverageOpacity)
+  const hasSurfaceOpacity = surfaceOpacity !== undefined
+  const opacity = hasSurfaceOpacity
+    ? surfaceOpacity
+    : coverageReduced
+      ? resolvedCoverageOpacity
+      : 0.6
+  const transparent = hasSurfaceOpacity ? surfaceOpacity < 1 : !coverageReduced
+  const depthWrite = hasSurfaceOpacity ? surfaceOpacity >= 1 : coverageReduced
+
+  return (
+    <mesh
+      geometry={geometry}
+      position={[bounds.center[0], height, bounds.center[2]]}
+      raycast={interactive ? undefined : ignoreRaycast}
+      receiveShadow={!unlit && !coverageReduced}
+    >
+      {unlit ? (
+        <meshBasicMaterial
+          color={color}
+          depthWrite={depthWrite}
+          opacity={opacity}
+          toneMapped={false}
+          transparent={transparent}
+        />
+      ) : (
+        <meshStandardMaterial
+          color={color}
+          metalness={0.02}
+          roughness={0.9}
+          alphaToCoverage={!hasSurfaceOpacity && coverageReduced}
+          depthWrite={depthWrite}
+          opacity={opacity}
+          transparent={transparent}
+        />
+      )}
+    </mesh>
+  )
+}

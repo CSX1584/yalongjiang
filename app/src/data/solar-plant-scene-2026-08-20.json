@@ -1,0 +1,1807 @@
+{
+  "schemaVersion": 1,
+  "templates": {
+    "schemaVersion": 1,
+    "items": {
+      "pv-subarray": {
+        "id": "pv-subarray",
+        "kind": "pv",
+        "name": "光伏子阵",
+        "foundation": {
+          "kind": "rounded-plot",
+          "paddingGridUnits": 2,
+          "thickness": 0.24,
+          "cornerRadius": 0.8
+        },
+        "components": [
+          {
+            "id": "pv-array-3f744476-b841-4d00-bbd5-240ec801d1e5",
+            "kind": "pv-array",
+            "name": "光伏阵列 08",
+            "transform": {
+              "position": [
+                20,
+                0,
+                6
+              ],
+              "rotationY": -1.57079633
+            },
+            "parameters": {
+              "rows": 8,
+              "columns": 2,
+              "rowSpacing": 1.64,
+              "columnSpacing": 3.2
+            }
+          },
+          {
+            "id": "transformer-43eaaf3d-b06a-4efd-a9a1-43a8abee06af",
+            "kind": "asset",
+            "assetKind": "transformer",
+            "name": "变压器 01",
+            "transform": {
+              "position": [
+                6,
+                0,
+                6
+              ],
+              "rotationY": 1.57079633
+            }
+          },
+          {
+            "id": "entity-copy-8d391be7-9ff4-453b-add6-79f717b4be0f",
+            "kind": "pv-array",
+            "name": "光伏阵列 08 副本",
+            "transform": {
+              "position": [
+                6,
+                0,
+                13.5
+              ],
+              "rotationY": -1.57079633
+            },
+            "parameters": {
+              "rows": 8,
+              "columns": 2,
+              "rowSpacing": 1.64,
+              "columnSpacing": 3.2
+            }
+          },
+          {
+            "id": "entity-copy-6e9df954-bd6b-4377-b745-bf50262f7b20",
+            "kind": "pv-array",
+            "name": "光伏阵列 08 副本",
+            "transform": {
+              "position": [
+                20,
+                0,
+                13.5
+              ],
+              "rotationY": -1.57079633
+            },
+            "parameters": {
+              "rows": 8,
+              "columns": 2,
+              "rowSpacing": 1.64,
+              "columnSpacing": 3.2
+            }
+          },
+          {
+            "id": "entity-copy-fb10f120-70a5-46ae-9636-f3c62c911e35",
+            "kind": "pv-array",
+            "name": "光伏阵列 08 副本 副本",
+            "transform": {
+              "position": [
+                -8,
+                0,
+                13.5
+              ],
+              "rotationY": -1.57079633
+            },
+            "parameters": {
+              "rows": 8,
+              "columns": 2,
+              "rowSpacing": 1.64,
+              "columnSpacing": 3.2
+            }
+          },
+          {
+            "id": "entity-copy-26287ace-e57a-47a8-8d07-b650208b3d2e",
+            "kind": "pv-array",
+            "name": "光伏阵列 08 副本 副本 副本",
+            "transform": {
+              "position": [
+                -8,
+                0,
+                6
+              ],
+              "rotationY": -1.57079633
+            },
+            "parameters": {
+              "rows": 8,
+              "columns": 2,
+              "rowSpacing": 1.64,
+              "columnSpacing": 3.2
+            }
+          },
+          {
+            "id": "entity-copy-35d974dc-e54b-47c7-a77b-fd93939b2a34",
+            "kind": "pv-array",
+            "name": "光伏阵列 08 副本 副本",
+            "transform": {
+              "position": [
+                6,
+                0,
+                21
+              ],
+              "rotationY": -1.57079633
+            },
+            "parameters": {
+              "rows": 8,
+              "columns": 2,
+              "rowSpacing": 1.64,
+              "columnSpacing": 3.2
+            }
+          },
+          {
+            "id": "entity-copy-f0bd44ad-d156-4c12-82ea-ac6a68ced883",
+            "kind": "pv-array",
+            "name": "光伏阵列 08 副本 副本",
+            "transform": {
+              "position": [
+                20,
+                0,
+                21
+              ],
+              "rotationY": -1.57079633
+            },
+            "parameters": {
+              "rows": 8,
+              "columns": 2,
+              "rowSpacing": 1.64,
+              "columnSpacing": 3.2
+            }
+          },
+          {
+            "id": "entity-copy-7f2eaec4-6931-45ef-b0b0-b9111f37e616",
+            "kind": "pv-array",
+            "name": "光伏阵列 08 副本 副本 副本",
+            "transform": {
+              "position": [
+                -8,
+                0,
+                21
+              ],
+              "rotationY": -1.57079633
+            },
+            "parameters": {
+              "rows": 8,
+              "columns": 2,
+              "rowSpacing": 1.64,
+              "columnSpacing": 3.2
+            }
+          }
+        ]
+      },
+      "ess-subarray": {
+        "id": "ess-subarray",
+        "kind": "ess",
+        "name": "储能子阵",
+        "foundation": {
+          "kind": "rounded-plot",
+          "paddingGridUnits": 2,
+          "thickness": 0.24,
+          "cornerRadius": 0.8
+        },
+        "components": [
+          {
+            "id": "battery-faed05ba-cce1-4163-9067-ae403c5516ce",
+            "kind": "asset",
+            "assetKind": "battery",
+            "name": "储能设备 01",
+            "transform": {
+              "position": [
+                -16.5,
+                0,
+                -13.75
+              ],
+              "rotationY": 1.57079633
+            }
+          },
+          {
+            "id": "transformer-bb9211f2-737a-4570-9fee-cdffa9445c60",
+            "kind": "asset",
+            "assetKind": "transformer",
+            "name": "变压器 01",
+            "transform": {
+              "position": [
+                -16.5,
+                0,
+                -6.75
+              ],
+              "rotationY": -1.57079633
+            }
+          },
+          {
+            "id": "pcs-group-60eb768e-27d0-4461-8d8c-78506e7df006",
+            "kind": "pcs-group",
+            "name": "PCS 组 02",
+            "transform": {
+              "position": [
+                -11.5,
+                0,
+                -3.25
+              ],
+              "rotationY": 1.57079633
+            },
+            "parameters": {
+              "count": 6,
+              "spacing": 0.4
+            }
+          },
+          {
+            "id": "entity-copy-aed229c5-0931-4f06-b36f-b6f7c638d8e9",
+            "kind": "asset",
+            "assetKind": "battery",
+            "name": "储能设备 01 副本",
+            "transform": {
+              "position": [
+                -16.5,
+                0,
+                -10.25
+              ],
+              "rotationY": 1.57079633
+            }
+          },
+          {
+            "id": "entity-copy-dedd6174-283c-4e30-9fc9-f236995d034f",
+            "kind": "asset",
+            "assetKind": "battery",
+            "name": "储能设备 01 副本 副本",
+            "transform": {
+              "position": [
+                -16.5,
+                0,
+                -3.25
+              ],
+              "rotationY": 1.57079633
+            }
+          },
+          {
+            "id": "entity-copy-39ce5d39-1a92-413b-a816-be234ade5c6c",
+            "kind": "pcs-group",
+            "name": "PCS 组 02 副本",
+            "transform": {
+              "position": [
+                -11.5,
+                0,
+                -10.25
+              ],
+              "rotationY": 1.57079633
+            },
+            "parameters": {
+              "count": 6,
+              "spacing": 0.4
+            }
+          },
+          {
+            "id": "entity-copy-8474815d-4ef5-4d70-bbfd-747aaf8b6ac4",
+            "kind": "pcs-group",
+            "name": "PCS 组 02 副本 副本",
+            "transform": {
+              "position": [
+                -11.5,
+                0,
+                -13.75
+              ],
+              "rotationY": 1.57079633
+            },
+            "parameters": {
+              "count": 6,
+              "spacing": 0.4
+            }
+          },
+          {
+            "id": "entity-copy-149efbc8-ad4c-46cc-b22f-dc253165fa50",
+            "kind": "asset",
+            "assetKind": "battery",
+            "name": "储能设备 01 副本",
+            "transform": {
+              "position": [
+                -1.5,
+                0,
+                -13.74999999576938
+              ],
+              "rotationY": -1.57079633
+            }
+          },
+          {
+            "id": "entity-copy-f80ac65c-f92e-4b56-bdc6-e6be3ebab7a2",
+            "kind": "asset",
+            "assetKind": "transformer",
+            "name": "变压器 01 副本",
+            "transform": {
+              "position": [
+                -1.5,
+                0,
+                -6.749999995769381
+              ],
+              "rotationY": 1.57079633
+            }
+          },
+          {
+            "id": "entity-copy-4d8571a4-3abc-4b0b-bebd-5c076d194781",
+            "kind": "pcs-group",
+            "name": "PCS 组 02 副本",
+            "transform": {
+              "position": [
+                -6.5,
+                0,
+                -3.25
+              ],
+              "rotationY": 1.57079633
+            },
+            "parameters": {
+              "count": 6,
+              "spacing": 0.4
+            }
+          },
+          {
+            "id": "entity-copy-669dcbef-7f0a-4d38-9b1b-91d2f6022e9f",
+            "kind": "asset",
+            "assetKind": "battery",
+            "name": "储能设备 01 副本 副本",
+            "transform": {
+              "position": [
+                -1.5,
+                0,
+                -10.24999999576938
+              ],
+              "rotationY": 1.57079633
+            }
+          },
+          {
+            "id": "entity-copy-90ebb84e-822f-4201-9ca5-49fd6b662542",
+            "kind": "asset",
+            "assetKind": "battery",
+            "name": "储能设备 01 副本 副本 副本",
+            "transform": {
+              "position": [
+                -1.5,
+                0,
+                -3.2499999957693806
+              ],
+              "rotationY": 4.71238898
+            }
+          },
+          {
+            "id": "entity-copy-c99e9c2a-c025-4c8d-b157-b51f94ce74c2",
+            "kind": "pcs-group",
+            "name": "PCS 组 02 副本 副本",
+            "transform": {
+              "position": [
+                -6.5,
+                0,
+                -10.25
+              ],
+              "rotationY": 1.57079633
+            },
+            "parameters": {
+              "count": 6,
+              "spacing": 0.4
+            }
+          },
+          {
+            "id": "entity-copy-8a1f85d9-03b2-424c-8b08-9556afe489ea",
+            "kind": "pcs-group",
+            "name": "PCS 组 02 副本 副本 副本",
+            "transform": {
+              "position": [
+                -6.5,
+                0,
+                -13.75
+              ],
+              "rotationY": 1.57079633
+            },
+            "parameters": {
+              "count": 6,
+              "spacing": 0.4
+            }
+          }
+        ]
+      }
+    }
+  },
+  "scene": {
+    "schemaVersion": 1,
+    "id": "solar-plant-scene",
+    "name": "电站场景 01",
+    "instances": [
+      {
+        "id": "template-instance-1d93ebc5-d0ac-4967-a43a-0604e6985708",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01",
+        "transform": {
+          "position": [
+            -31,
+            0,
+            -17
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "template-instance-31af7ac5-8163-4af6-8d1e-46c8a7ad0de8",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02",
+        "transform": {
+          "position": [
+            21.5,
+            0,
+            -17
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "template-instance-79822646-cdc8-46a6-aa87-8dc843c30db5",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 03",
+        "transform": {
+          "position": [
+            -31,
+            0,
+            13.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "template-instance-3783da5f-fba3-4e93-9b62-322f39c4b85f",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 04",
+        "transform": {
+          "position": [
+            21.5,
+            0,
+            13.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "template-instance-934b6e04-e7cd-4896-827c-ba0f314c434d",
+        "kind": "template",
+        "templateId": "ess-subarray",
+        "name": "储能子阵 01",
+        "transform": {
+          "position": [
+            81,
+            0,
+            -5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "asset-instance-3e44c1ce-fc3a-45d8-a7dd-4910445908ef",
+        "kind": "asset",
+        "assetKind": "grid",
+        "name": "电网设备 01",
+        "transform": {
+          "position": [
+            106.5,
+            0,
+            85
+          ],
+          "rotationY": -1.57079633
+        },
+        "foundation": {
+          "kind": "rounded-plot",
+          "paddingGridUnits": 2,
+          "thickness": 0.24,
+          "cornerRadius": 0.8
+        }
+      },
+      {
+        "id": "asset-instance-e98f8b63-431a-454c-8673-fcd2cd9e8727",
+        "kind": "asset",
+        "assetKind": "control-room",
+        "name": "监控室 01",
+        "transform": {
+          "position": [
+            71,
+            0,
+            53
+          ],
+          "rotationY": -1.57079633
+        }
+      },
+      {
+        "id": "entity-copy-b7f071d9-132f-48bd-974a-3cd53240fefa",
+        "kind": "template",
+        "templateId": "ess-subarray",
+        "name": "储能子阵 01 副本",
+        "transform": {
+          "position": [
+            81,
+            0,
+            17.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-47254e9d-4b7a-43da-b560-9089ce0b4272",
+        "kind": "template",
+        "templateId": "ess-subarray",
+        "name": "储能子阵 01 副本 副本",
+        "transform": {
+          "position": [
+            81,
+            0,
+            40
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-c79d1f0b-d248-4856-8946-81e9384737f1",
+        "kind": "template",
+        "templateId": "ess-subarray",
+        "name": "储能子阵 01 副本",
+        "transform": {
+          "position": [
+            111.5,
+            0,
+            -5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-69edc09c-1c8e-46ee-94be-3e4cd4182b5e",
+        "kind": "template",
+        "templateId": "ess-subarray",
+        "name": "储能子阵 01 副本 副本",
+        "transform": {
+          "position": [
+            111.5,
+            0,
+            17.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-d2e9074b-7a44-4aab-88b4-5f7fbae49597",
+        "kind": "template",
+        "templateId": "ess-subarray",
+        "name": "储能子阵 01 副本 副本 副本",
+        "transform": {
+          "position": [
+            111.5,
+            0,
+            40
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-5811444a-72bb-4a7e-8e3b-56a98c6d711d",
+        "kind": "template",
+        "templateId": "ess-subarray",
+        "name": "储能子阵 01 副本 副本 副本 副本",
+        "transform": {
+          "position": [
+            111.5,
+            0,
+            62.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-e1523ba6-13e1-4a0c-94bb-26cc59c665c0",
+        "kind": "template",
+        "templateId": "ess-subarray",
+        "name": "储能子阵 01 副本 副本",
+        "transform": {
+          "position": [
+            142,
+            0,
+            -5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-a4992b2a-96ed-4d0b-8b1a-2f9ba575b529",
+        "kind": "template",
+        "templateId": "ess-subarray",
+        "name": "储能子阵 01 副本 副本 副本",
+        "transform": {
+          "position": [
+            142,
+            0,
+            17.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-19f7d1d6-78e5-4941-af19-20e7b8688bd6",
+        "kind": "template",
+        "templateId": "ess-subarray",
+        "name": "储能子阵 01 副本 副本 副本 副本",
+        "transform": {
+          "position": [
+            142,
+            0,
+            40
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-3be79dd9-372c-4db4-9552-8cbb869a0f2f",
+        "kind": "template",
+        "templateId": "ess-subarray",
+        "name": "储能子阵 01 副本 副本 副本 副本 副本",
+        "transform": {
+          "position": [
+            142,
+            0,
+            62.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-3f7faa6b-94c6-4b06-bef4-d0497372d946",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 04 副本",
+        "transform": {
+          "position": [
+            21.5,
+            0,
+            44
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-88ee9349-5add-46fb-bc4d-52ca910dd901",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 03 副本",
+        "transform": {
+          "position": [
+            -31,
+            0,
+            44
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-9135add7-e38e-4e7e-8452-1d568f8dfb4c",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本",
+        "transform": {
+          "position": [
+            -31,
+            0,
+            74.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-25b5e400-47c7-46de-961a-c2489b395296",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本",
+        "transform": {
+          "position": [
+            21.5,
+            0,
+            74.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-6804ee65-9e19-4c92-8a9b-f74f7564260b",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 03 副本",
+        "transform": {
+          "position": [
+            -31,
+            0,
+            105
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-eaccad65-3eb0-417c-abb9-766e2d5cf106",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 04 副本",
+        "transform": {
+          "position": [
+            21.5,
+            0,
+            105
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-8173c8be-7b3d-4737-8ae0-cb983f3af543",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 04 副本 副本",
+        "transform": {
+          "position": [
+            21.5,
+            0,
+            135.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-1a9ff081-1cc2-466d-ad16-8a535e985d83",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 03 副本 副本",
+        "transform": {
+          "position": [
+            -31,
+            0,
+            135.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-bc7ab9a9-09ce-4367-9d97-ce7eb2461e03",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本",
+        "transform": {
+          "position": [
+            -136,
+            0,
+            -17
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-7f7cee79-43ee-4d2c-a40d-e139a391c93e",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本",
+        "transform": {
+          "position": [
+            -83.5,
+            0,
+            -17
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-6dc3c411-197c-421c-99a8-597b91dc1721",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 03 副本",
+        "transform": {
+          "position": [
+            -136,
+            0,
+            13.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-57bc959e-ba79-435c-b127-08e6457551b9",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 04 副本",
+        "transform": {
+          "position": [
+            -83.5,
+            0,
+            13.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-da45fa30-78b6-42d4-8930-6c3e6b59a287",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 04 副本 副本",
+        "transform": {
+          "position": [
+            -83.5,
+            0,
+            44
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-25db57f1-4d3f-4dc5-afe5-888e5e5183c4",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 03 副本 副本",
+        "transform": {
+          "position": [
+            -136,
+            0,
+            44
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-a97202b9-9ffa-49f0-9a96-d34c240f6563",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本",
+        "transform": {
+          "position": [
+            -136,
+            0,
+            74.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-a13f7bc9-61ac-4829-8dce-3f9894186d9f",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本 副本",
+        "transform": {
+          "position": [
+            -83.5,
+            0,
+            74.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-9cbed311-6498-4ae7-b029-969c1b7f5b3c",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 03 副本 副本",
+        "transform": {
+          "position": [
+            -136,
+            0,
+            105
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-ec2be1d3-9b80-4476-abb6-35dad73a8ab3",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 04 副本 副本",
+        "transform": {
+          "position": [
+            -83.5,
+            0,
+            105
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-f36294f6-109f-40cd-9b8c-6e318aaebe3f",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 04 副本 副本 副本",
+        "transform": {
+          "position": [
+            -83.5,
+            0,
+            135.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-682d0cf2-e11f-497f-9f92-222426b76f11",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 03 副本 副本 副本",
+        "transform": {
+          "position": [
+            -136,
+            0,
+            135.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-c58941a9-dd50-45c8-b02e-2e86e7d5ad64",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本",
+        "transform": {
+          "position": [
+            -241,
+            0,
+            -17
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-6b656a73-c380-4e7a-b1de-2769b2a99a2c",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本",
+        "transform": {
+          "position": [
+            -188.5,
+            0,
+            -17
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-2ecb14d4-a351-48eb-97ce-654a3713a800",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 03 副本",
+        "transform": {
+          "position": [
+            -241,
+            0,
+            13.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-58a1dcbb-1503-4e35-9b73-27d8f4ab9d8f",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 04 副本",
+        "transform": {
+          "position": [
+            -188.5,
+            0,
+            13.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-1b5b0f58-6313-4aba-b7f5-60cf289ea974",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 04 副本 副本",
+        "transform": {
+          "position": [
+            -188.5,
+            0,
+            44
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-d8bfe2b7-f44c-4492-ba73-14b292a72998",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 03 副本 副本",
+        "transform": {
+          "position": [
+            -241,
+            0,
+            44
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-fd1d711b-9ea5-445e-a967-d754d7ef679f",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本",
+        "transform": {
+          "position": [
+            -241,
+            0,
+            74.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-f6e2226c-adab-4324-a290-e0c5d5aaaac1",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本 副本",
+        "transform": {
+          "position": [
+            -188.5,
+            0,
+            74.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-4c7d4254-0c07-46d5-9930-60a1e4af91d2",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 03 副本 副本",
+        "transform": {
+          "position": [
+            -241,
+            0,
+            105
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-3a9d61d3-6766-4f4e-a74f-eefa69cb8dd7",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 04 副本 副本",
+        "transform": {
+          "position": [
+            -188.5,
+            0,
+            105
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-fa6117c5-b48f-4c0a-9c00-5af56b40864d",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 04 副本 副本 副本",
+        "transform": {
+          "position": [
+            -188.5,
+            0,
+            135.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-066be671-5363-4773-83de-93fa3105db58",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 03 副本 副本 副本",
+        "transform": {
+          "position": [
+            -241,
+            0,
+            135.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-dd810879-2a97-4e26-bd40-bd6f70371fcc",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本",
+        "transform": {
+          "position": [
+            -346,
+            0,
+            -17
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-ed84208a-9a63-4520-b2d9-66ad8a0c9d45",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本 副本",
+        "transform": {
+          "position": [
+            -293.5,
+            0,
+            -17
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-7e4331d6-4ce8-48b8-a4ca-d1526bd5af5f",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 03 副本 副本",
+        "transform": {
+          "position": [
+            -346,
+            0,
+            13.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-06d55080-775b-433e-99cf-6880ecb89ff4",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 04 副本 副本",
+        "transform": {
+          "position": [
+            -293.5,
+            0,
+            13.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-590bf2ce-80f5-4e4f-9b0a-2b7b39d42baf",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 04 副本 副本 副本",
+        "transform": {
+          "position": [
+            -293.5,
+            0,
+            44
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-aa089dec-e86c-4fc7-88fc-5ccbcad4124c",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 03 副本 副本 副本",
+        "transform": {
+          "position": [
+            -346,
+            0,
+            44
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-14a00dac-f217-415d-8bf4-9d164aa5065c",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本 副本",
+        "transform": {
+          "position": [
+            -346,
+            0,
+            74.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-2d66b382-e533-49da-b3c7-573a281d0511",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本 副本 副本",
+        "transform": {
+          "position": [
+            -293.5,
+            0,
+            74.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-06c374f0-af1c-49d5-bec4-69f77af91a0e",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 03 副本 副本 副本",
+        "transform": {
+          "position": [
+            -346,
+            0,
+            105
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-1d554ac8-7a75-4a97-9c55-0e7060f55ded",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 04 副本 副本 副本",
+        "transform": {
+          "position": [
+            -293.5,
+            0,
+            105
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-bc9d4376-bd62-486f-bd23-899573a29e83",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 04 副本 副本 副本 副本",
+        "transform": {
+          "position": [
+            -293.5,
+            0,
+            135.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-efd35278-3da2-4ff8-8c2b-f98cebaec81e",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 03 副本 副本 副本 副本",
+        "transform": {
+          "position": [
+            -346,
+            0,
+            135.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-03945015-c7bb-4d5b-92ad-bbdcfd1ee7c0",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本",
+        "transform": {
+          "position": [
+            -31,
+            0,
+            -47.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-4344593c-28a6-4196-a43d-99f46e49e63b",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本",
+        "transform": {
+          "position": [
+            21.5,
+            0,
+            -47.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-e19fc837-d335-4e90-8658-866a4d964a2f",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本",
+        "transform": {
+          "position": [
+            -136,
+            0,
+            -47.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-9e568f9d-4ed1-4514-a700-4eeba99ef6f6",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本 副本",
+        "transform": {
+          "position": [
+            -83.5,
+            0,
+            -47.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-6d4438b1-25bb-4066-a99d-f005036e0a09",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本",
+        "transform": {
+          "position": [
+            -241,
+            0,
+            -47.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-9bf83199-4dc6-434d-8d29-65b0e7468a68",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本 副本",
+        "transform": {
+          "position": [
+            -188.5,
+            0,
+            -47.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-6e4f2ae7-3f03-4e0f-bfb6-e97fc69ed120",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本 副本",
+        "transform": {
+          "position": [
+            -346,
+            0,
+            -47.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-35e9f41c-84d3-4690-a4f1-0768acb172e7",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本 副本 副本",
+        "transform": {
+          "position": [
+            -293.5,
+            0,
+            -47.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-a39f5b1d-098a-4ce7-ab05-85117c199388",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本 副本",
+        "transform": {
+          "position": [
+            21.5,
+            0,
+            -78
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-86869036-d57f-477b-8838-fa3459f68cae",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本 副本",
+        "transform": {
+          "position": [
+            74,
+            0,
+            -78
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-60694535-a2bb-4f82-8735-f35bc09f01d1",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 03 副本 副本",
+        "transform": {
+          "position": [
+            74,
+            0,
+            105
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-e3040c05-384b-48bf-a131-e4168c3eac8c",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 04 副本 副本",
+        "transform": {
+          "position": [
+            126.5,
+            0,
+            105
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-838cbd4d-11f7-4a6f-8b7d-b0efef9318ff",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 04 副本 副本 副本",
+        "transform": {
+          "position": [
+            126.5,
+            0,
+            135.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-58881603-50d9-4e75-b3e8-f4f854c9c26f",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 03 副本 副本 副本",
+        "transform": {
+          "position": [
+            74,
+            0,
+            135.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-b092b909-95e1-4585-961c-5b84a07bdb9a",
+        "kind": "template",
+        "templateId": "ess-subarray",
+        "name": "储能子阵 01 副本",
+        "transform": {
+          "position": [
+            81,
+            0,
+            -27.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-e5b3b081-7bab-4a09-9265-63e18fa9b947",
+        "kind": "template",
+        "templateId": "ess-subarray",
+        "name": "储能子阵 01 副本 副本",
+        "transform": {
+          "position": [
+            111.5,
+            0,
+            -27.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-3c17f485-3ae9-404b-b2d9-1d043f562485",
+        "kind": "template",
+        "templateId": "ess-subarray",
+        "name": "储能子阵 01 副本 副本 副本",
+        "transform": {
+          "position": [
+            142,
+            0,
+            -27.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-0976c90a-3ed0-4bf9-b8cb-64080772f469",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本 副本 副本",
+        "transform": {
+          "position": [
+            126.5,
+            0,
+            -78
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-ec44aae6-169e-431e-945b-d80a2de5ce78",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本",
+        "transform": {
+          "position": [
+            -31,
+            0,
+            -78
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-bbcdbf6e-98d7-47aa-823b-4e52f48ecd8f",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本 副本",
+        "transform": {
+          "position": [
+            -136,
+            0,
+            -78
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-0b7fe5d2-b588-4a8d-a7aa-5a3fd7304989",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本 副本 副本",
+        "transform": {
+          "position": [
+            -83.5,
+            0,
+            -78
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-58d83e21-8d9a-4b11-b7b8-513f0c3bf78e",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本 副本",
+        "transform": {
+          "position": [
+            -241,
+            0,
+            -78
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-f59337f9-2cf4-429d-a4dd-b647d55d1500",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本 副本 副本",
+        "transform": {
+          "position": [
+            -188.5,
+            0,
+            -78
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-89280d60-b546-40ee-bd13-00c64f97ae52",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本 副本 副本",
+        "transform": {
+          "position": [
+            -346,
+            0,
+            -78
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-77df67a9-bd38-47e3-8248-9f3cbbc94f7c",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本 副本 副本 副本",
+        "transform": {
+          "position": [
+            -293.5,
+            0,
+            -78
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-7797a99a-f302-4a04-b90c-a6b94e502068",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本 副本 副本",
+        "transform": {
+          "position": [
+            21.5,
+            0,
+            -108.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-8a9e8891-059f-4b63-9702-b40782c8a46b",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本 副本 副本",
+        "transform": {
+          "position": [
+            74,
+            0,
+            -108.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-1f858c61-69ae-41c5-a907-a37d6a2c72bb",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本 副本",
+        "transform": {
+          "position": [
+            -31,
+            0,
+            -108.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-7472d189-3ed5-4629-95bb-83bb686803f1",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本 副本 副本",
+        "transform": {
+          "position": [
+            -136,
+            0,
+            -108.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-84745ab1-9f05-4c77-af9e-1ff144407303",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本 副本 副本 副本",
+        "transform": {
+          "position": [
+            -83.5,
+            0,
+            -108.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-e846a123-3d86-4c3b-8b57-6eb02ea62d4c",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本 副本 副本",
+        "transform": {
+          "position": [
+            -241,
+            0,
+            -108.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-1eb32990-b766-4e82-87a9-61e1b02f528f",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本 副本 副本 副本",
+        "transform": {
+          "position": [
+            -188.5,
+            0,
+            -108.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-43d3da98-2f49-4d43-971d-bbbd7efc887f",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本 副本 副本 副本 副本",
+        "transform": {
+          "position": [
+            -293.5,
+            0,
+            -108.5
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-d53fbf96-d58c-4530-8acc-f59bdbc81546",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 02 副本 副本 副本 副本",
+        "transform": {
+          "position": [
+            21.5,
+            0,
+            -139
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-990d6d7b-89b4-4a07-92b1-351831c0340c",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本 副本 副本 副本",
+        "transform": {
+          "position": [
+            74,
+            0,
+            -139
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-42f358ed-248f-4958-a5b2-4a96f663c05d",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本 副本 副本 副本",
+        "transform": {
+          "position": [
+            -136,
+            0,
+            -139
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "entity-copy-a9bc5f1c-e6b7-4913-a89b-561870de2333",
+        "kind": "template",
+        "templateId": "pv-subarray",
+        "name": "光伏子阵 01 副本 副本 副本 副本 副本",
+        "transform": {
+          "position": [
+            -241,
+            0,
+            -139
+          ],
+          "rotationY": 0
+        }
+      }
+    ],
+    "environment": {
+      "groundSize": [
+        180,
+        130
+      ],
+      "gridSpacing": 2,
+      "hdrUrl": null
+    }
+  }
+}
