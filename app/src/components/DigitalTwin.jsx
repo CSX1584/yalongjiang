@@ -596,23 +596,6 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
         map.on('style.load', () => {
           if (disposed) return
           try {
-            // Mapbox enables 3D lighting only when both light types are present.
-            if (theme === 'light') map.setLights([{
-              id: 'ops-ambient',
-              type: 'ambient',
-              properties: { color: '#ffffff', intensity: 0.35 },
-            }, {
-              id: 'ops-sun',
-              type: 'directional',
-              properties: {
-                direction: [30, 55],
-                'cast-shadows': true,
-                'shadow-intensity': 0.85,
-                'shadow-quality': 1,
-                intensity: 0.9,
-                color: '#fff2d6',
-              },
-            }])
             if (RECORDING_MODE) {
               map.getStyle().layers.filter((layer) => layer.type === 'symbol').forEach((layer) => {
                 map.setLayoutProperty(layer.id, 'visibility', 'none')
@@ -707,8 +690,8 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
         dusk: { direction: [250, 24], color: '#f2b08a', intensity: 0.5 },
         night: { direction: [180, 18], color: '#9bb7e8', intensity: 0.18 },
       }[lightPreset]
-      map.setLights?.([{ id: 'ops-ambient', type: 'ambient', properties: { color: '#ffffff', intensity: lightPreset === 'night' ? 0.18 : 0.35 } }, { id: 'ops-sun', type: 'directional', properties: { ...sunByPreset, 'cast-shadows': true, 'shadow-intensity': 0.85, 'shadow-quality': 1 } }])
       if (theme === 'dark') {
+        map.setLights?.([{ id: 'ops-ambient', type: 'ambient', properties: { color: '#ffffff', intensity: lightPreset === 'night' ? 0.18 : 0.35 } }, { id: 'ops-sun', type: 'directional', properties: { ...sunByPreset, 'cast-shadows': true, 'shadow-intensity': 0.85, 'shadow-quality': 1 } }])
         Object.entries(appearance.colors).forEach(([property, value]) => {
           map.setConfigProperty?.('basemap', property, value)
         })
