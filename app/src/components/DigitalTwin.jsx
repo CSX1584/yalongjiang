@@ -701,7 +701,6 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
     if (!mapReady || !map) return
     try {
       const appearance = getMapAppearance(lightPreset)
-      map.setConfigProperty?.('basemap', 'lightPreset', lightPreset)
       const sunByPreset = {
         dawn: { direction: [110, 28], color: '#ffd8a8', intensity: 0.65 },
         day: { direction: [30, 55], color: '#fff2d6', intensity: 0.9 },
@@ -718,6 +717,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
           'star-intensity': lightPreset === 'night' ? 0.08 : lightPreset === 'dusk' ? 0.02 : 0,
         })
       }
+      try { map.setConfigProperty?.('basemap', 'lightPreset', lightPreset) } catch { /* style may not expose basemap config */ }
     } catch {
       // Keep the loaded map usable when a style preset is unavailable.
     }
