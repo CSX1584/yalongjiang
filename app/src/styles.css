@@ -3100,7 +3100,9 @@ input::placeholder {
   left: 16px;
   display: grid;
   width: 228px;
+  max-height: calc(100% - 140px);
   gap: 4px;
+  overflow: auto;
   padding: 12px;
   border: 1px solid rgba(151, 178, 191, 0.18);
   border-radius: 4px;
@@ -3130,6 +3132,15 @@ input::placeholder {
 .map-layer-menu button:hover {
   color: #fff;
   background: rgba(var(--ops-invert-rgb), 0.045);
+}
+
+.map-layer-menu button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.map-layer-menu .map-model-field {
+  padding: 2px 7px;
 }
 
 .map-layer-menu button i {

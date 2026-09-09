@@ -89,6 +89,22 @@ const LIGHT_PRESETS = [
   ['dusk', '黄昏'],
   ['night', '夜景'],
 ]
+const SUN_LIGHT_BY_PRESET = {
+  dawn: { direction: [110, 28], color: '#ffd8a8', intensity: 0.65 },
+  day: { direction: [30, 55], color: '#fff2d6', intensity: 0.9 },
+  dusk: { direction: [250, 24], color: '#f2b08a', intensity: 0.5 },
+  night: { direction: [180, 18], color: '#9bb7e8', intensity: 0.18 },
+}
+const OUTDOORS_DAY_AZIMUTH = 180
+const OUTDOORS_DAY_POLAR = 20
+
+function cloneLights(lights) {
+  return (lights || []).map((light) => ({
+    ...light,
+    properties: light.properties ? { ...light.properties } : light.properties,
+  }))
+}
+
 const MAP_APPEARANCE = {
   dark: {
     colors: {
@@ -452,6 +468,12 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
   const [lightPreset, setLightPreset] = useState(() => theme === 'light' ? 'day' : 'dusk')
   const lightPresetRef = useRef(lightPreset)
   lightPresetRef.current = lightPreset
+  const [sunAzimuth, setSunAzimuth] = useState(() => theme === 'light'
+    ? OUTDOORS_DAY_AZIMUTH
+    : SUN_LIGHT_BY_PRESET.dusk.direction[0])
+  const [sunAzimuthCustom, setSunAzimuthCustom] = useState(false)
+  const customSunLightsRef = useRef(false)
+  const officialSunLightsRef = useRef(null)
   const [layersOpen, setLayersOpen] = useState(false)
   const [camerasOpen, setCamerasOpen] = useState(false)
   const [cameraRequest, setCameraRequest] = useState(null)
@@ -527,6 +549,8 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
     setMapReady(false)
     setModelAvailable(false)
     setModelError('')
+    officialSunLightsRef.current = null
+    customSunLightsRef.current = false
     let disposed = false
     let map
     let loaded = false
@@ -596,6 +620,12 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
         map.on('style.load', () => {
           if (disposed) return
           try {
+            if (theme === 'light' && !officialSunLightsRef.current) {
+              const lights = map.getLights?.() || []
+              if (lights.some((light) => light.type === 'directional')) {
+                officialSunLightsRef.current = cloneLights(lights)
+              }
+            }
             if (RECORDING_MODE) {
               map.getStyle().layers.filter((layer) => layer.type === 'symbol').forEach((layer) => {
                 map.setLayoutProperty(layer.id, 'visibility', 'none')
@@ -670,12 +700,20 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
         if (contextLostHandler) map.getCanvas().removeEventListener('webglcontextlost', contextLostHandler)
         map.remove()
       }
-      if (mapRef.current === map) mapRef.current = null
+      if (mapRef.current === map) {
+        mapRef.current = null
+        officialSunLightsRef.current = null
+        customSunLightsRef.current = false
+      }
     }
   }, [corridor, mapStyle, stationFeatures, stationModelFeatures, syncMarkers])
 
   useEffect(() => {
     setLightPreset(theme === 'light' ? 'day' : 'dusk')
+    setSunAzimuth(theme === 'light' ? OUTDOORS_DAY_AZIMUTH : SUN_LIGHT_BY_PRESET.dusk.direction[0])
+    setSunAzimuthCustom(false)
+    customSunLightsRef.current = false
+    officialSunLightsRef.current = null
     setWeatherEnabled(theme === 'dark')
   }, [theme])
 
@@ -684,14 +722,13 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
     if (!mapReady || !map) return
     try {
       const appearance = getMapAppearance(lightPreset)
-      const sunByPreset = {
-        dawn: { direction: [110, 28], color: '#ffd8a8', intensity: 0.65 },
-        day: { direction: [30, 55], color: '#fff2d6', intensity: 0.9 },
-        dusk: { direction: [250, 24], color: '#f2b08a', intensity: 0.5 },
-        night: { direction: [180, 18], color: '#9bb7e8', intensity: 0.18 },
-      }[lightPreset]
+      const sunByPreset = SUN_LIGHT_BY_PRESET[lightPreset] || SUN_LIGHT_BY_PRESET.day
+      try { map.setConfigProperty?.('basemap', 'lightPreset', lightPreset) } catch { /* style may not expose basemap config */ }
       if (theme === 'dark') {
-        map.setLights?.([{ id: 'ops-ambient', type: 'ambient', properties: { color: '#ffffff', intensity: lightPreset === 'night' ? 0.18 : 0.35 } }, { id: 'ops-sun', type: 'directional', properties: { ...sunByPreset, 'cast-shadows': true, 'shadow-intensity': 0.85, 'shadow-quality': 1 } }])
+        const direction = sunAzimuthCustom && lightPreset === 'day'
+          ? [sunAzimuth, sunByPreset.direction[1]]
+          : sunByPreset.direction
+        map.setLights?.([{ id: 'ops-ambient', type: 'ambient', properties: { color: '#ffffff', intensity: lightPreset === 'night' ? 0.18 : 0.35 } }, { id: 'ops-sun', type: 'directional', properties: { ...sunByPreset, direction, 'cast-shadows': true, 'shadow-intensity': 0.85, 'shadow-quality': 1 } }])
         Object.entries(appearance.colors).forEach(([property, value]) => {
           map.setConfigProperty?.('basemap', property, value)
         })
@@ -699,12 +736,26 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
           ...appearance.fog,
           'star-intensity': lightPreset === 'night' ? 0.08 : lightPreset === 'dusk' ? 0.02 : 0,
         })
+      } else if (sunAzimuthCustom && lightPreset === 'day') {
+        const lights = officialSunLightsRef.current || cloneLights(map.getLights?.())
+        if (lights.some((light) => light.type === 'directional')) {
+          if (!officialSunLightsRef.current) officialSunLightsRef.current = lights
+          map.setLights(cloneLights(lights).map((light) => light.type === 'directional'
+            ? {
+              ...light,
+              properties: { ...light.properties, direction: [sunAzimuth, OUTDOORS_DAY_POLAR] },
+            }
+            : light))
+          customSunLightsRef.current = true
+        }
+      } else if (customSunLightsRef.current) {
+        if (officialSunLightsRef.current) map.setLights?.(cloneLights(officialSunLightsRef.current))
+        customSunLightsRef.current = false
       }
-      try { map.setConfigProperty?.('basemap', 'lightPreset', lightPreset) } catch { /* style may not expose basemap config */ }
     } catch {
       // Keep the loaded map usable when a style preset is unavailable.
     }
-  }, [lightPreset, mapReady, theme])
+  }, [lightPreset, mapReady, sunAzimuth, sunAzimuthCustom, theme])
 
   useEffect(() => {
     const map = mapRef.current
@@ -849,6 +900,16 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
     setModelSaveState('')
   }
 
+  const updateSunAzimuth = (value) => {
+    setSunAzimuth(Number(value))
+    setSunAzimuthCustom(true)
+  }
+
+  const resetSunAzimuth = () => {
+    setSunAzimuth(theme === 'light' ? OUTDOORS_DAY_AZIMUTH : SUN_LIGHT_BY_PRESET[lightPreset].direction[0])
+    setSunAzimuthCustom(false)
+  }
+
   const updateStationElevation = (value) => {
     if (!modelStation) return
     const elevation = clampModelParameter(value, MODEL_ELEVATION_MIN, MODEL_ELEVATION_MAX, DEFAULT_STATION_MODEL_CONFIG.elevation)
@@ -949,10 +1010,18 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
           <div className="map-layer-menu" role="dialog" aria-label="图层与光照" onKeyDown={(event) => { if (event.key === 'Escape') { setLayersOpen(false); panelRef.current?.querySelector('[aria-label="图层与光照"]')?.focus() } }}>
             <span>光照时段</span>
             {LIGHT_PRESETS.map(([value, label]) => (
-              <button key={value} type="button" aria-pressed={lightPreset === value} onClick={() => setLightPreset(value)} disabled={!mapReady}>
+              <button key={value} type="button" aria-pressed={lightPreset === value} onClick={() => { setLightPreset(value); setSunAzimuth(theme === 'light' ? OUTDOORS_DAY_AZIMUTH : SUN_LIGHT_BY_PRESET[value].direction[0]); setSunAzimuthCustom(false) }} disabled={!mapReady}>
                 <span>{label}</span><i>{lightPreset === value ? <Check size={12} /> : null}</i>
               </button>
             ))}
+            <span>太阳方向</span>
+            <label className="map-model-field">
+              <span>方位角 <output>{sunAzimuth}°</output></span>
+              <input type="range" min="0" max="360" step="1" value={sunAzimuth} aria-label="太阳方位角" disabled={!mapReady || lightPreset !== 'day'} onChange={(event) => updateSunAzimuth(event.target.value)} />
+            </label>
+            <button type="button" className="map-light-reset" disabled={!mapReady || !sunAzimuthCustom} onClick={resetSunAzimuth}>
+              <span>恢复官方方向</span><RotateCcw size={14} aria-hidden="true" />
+            </button>
             <span>显示图层</span>
             <button type="button" role="switch" aria-checked={terrainEnabled} onClick={() => setTerrainEnabled((value) => !value)}><span>三维地形与流域链路</span><i>{terrainEnabled ? <Check size={12} /> : null}</i></button>
             <button type="button" role="switch" aria-checked={weatherEnabled} onClick={() => setWeatherEnabled((value) => !value)}><span>高海拔气象粒子</span><i>{weatherEnabled ? <Check size={12} /> : null}</i></button>
