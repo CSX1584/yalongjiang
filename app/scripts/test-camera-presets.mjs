@@ -4,7 +4,7 @@ import { runInNewContext } from 'node:vm'
 
 // Exercise the actual preset data and camera effect without a WebGL dependency.
 const source = readFileSync(new URL('../src/components/DigitalTwin.jsx', import.meta.url), 'utf8')
-const data = source.slice(source.indexOf('const DEFAULT_CAMERA ='), source.indexOf('const TERRAIN_SOURCE_ID ='))
+const data = source.slice(source.indexOf('const CAMERA_03 ='), source.indexOf('const TERRAIN_SOURCE_ID ='))
 const presets = runInNewContext(`${data}; CAMERA_PRESETS`)
 assert.equal(presets.length, 2)
 assert.equal(presets[0].name, '镜头01')
@@ -37,3 +37,13 @@ for (const { camera } of presets) {
   }
 }
 console.log('Camera presets: both saved positions, readiness and reduced motion passed')
+
+const defaultCamera = runInNewContext(`${data}; DEFAULT_CAMERA`)
+assert.deepEqual(JSON.parse(JSON.stringify(defaultCamera)), {
+  center: [101.42225821860052, 27.759148667347134],
+  zoom: 10.503582834440447, pitch: 80, bearing: 0,
+})
+assert.match(source, /new mapboxgl.Map\(\{[\s\S]*?\.\.\.CAMERA_03/)
+assert.match(source, /const FALLBACK_SAVED_CAMERA = CAMERA_03/)
+assert.match(source, /const CAMERA_PRESET_STORAGE_KEY = 'ops-camera-preset-v2'/)
+console.log('Project camera 03 is the startup and fresh-origin default.')

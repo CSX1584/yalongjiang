@@ -49,6 +49,20 @@ for (const model of ['/models/station.glb', '/models/station_light.glb']) {
   assert.equal(modelSource.models.test.lightOverrides?.['light-directional-intensity'], 1)
   assert.equal(layer.paint['model-cast-shadows'], true)
   assert.equal(layer.paint['model-receive-shadows'], true)
-  assert.equal(modelSource.models.test.lightOverrides?.['light-ambient-intensity'], 0.5)
+  assert.equal(modelSource.models.test.lightOverrides?.['light-ambient-intensity'], 0.8)
 }
 console.log('Model shadows and saved lighting migration passed.')
+
+// A fresh origin and an old port's cached placement must use the same project parameters.
+const stale = { ...config, scale: 5500, stationElevations: { lianghekou: -44000 } }
+delete stale.placementVersion
+for (const stored of [null, stale]) {
+  context.window.localStorage.getItem = () => JSON.stringify(stored)
+  const loaded = context.load()
+  assert.equal(loaded.scale, 5550)
+  assert.equal(JSON.stringify(loaded.stationElevations), JSON.stringify({
+    lianghekou: -23400, kela: -24500, zhalashan: -25800, labashan: -27000,
+  }))
+  assert.equal(loaded.placementVersion, config.placementVersion)
+}
+console.log('Project station heights survive fresh origins and stale caches.')

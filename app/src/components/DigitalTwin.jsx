@@ -21,19 +21,28 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { useApp } from '../context/AppContext'
 import { stations as fallbackStations } from '../data/demoData'
 import stationModelConfig from '../data/stationModelConfig.json'
+import { EVENT_PHASES, getStationEvents, getStationKpis } from './stationCardData.mjs'
 import { upgradeModelShadows } from './modelShadowQuality'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN?.trim()
 // 临时录屏精简：录制结束后改为 false，恢复浮层和底图标注。
 const RECORDING_MODE = true
-const DEFAULT_CAMERA = {
+// 镜头03：项目级初始视角，作为跨刷新、跨端口的永久默认值。
+const CAMERA_03 = {
+  center: [101.42225821860052, 27.759148667347134],
+  zoom: 10.503582834440447,
+  pitch: 80,
+  bearing: 0,
+}
+const DEFAULT_CAMERA = CAMERA_03
+const CAMERA_01 = {
   center: [101.0023073258, 27.7601268283],
   zoom: 8.0942241286,
   pitch: 80,
   bearing: 21.6,
 }
 const CAMERA_PRESETS = [
-  { name: '镜头01', camera: DEFAULT_CAMERA },
+  { name: '镜头01', camera: CAMERA_01 },
   { name: '镜头02', camera: {
     center: [101.37661223434884, 28.355902485064078],
     zoom: 9.081086751597558,
@@ -60,10 +69,11 @@ const STATION_MODEL_URL = '/models/station.glb'
 const STATION_MODEL_BLADE_NODE = '风能叶片'
 const STATION_MODEL_BLADE_STATE = 'bladeRotation'
 const STATION_MODEL_BLADE_PERIOD_MS = 6000
-const STATION_MODEL_NATURAL_HEIGHT = 7.125
+// World-space Y maximum of the current GLB, including its node translations.
+const STATION_MODEL_NATURAL_HEIGHT = 5.893375962972641
 const MODEL_CONFIG_STORAGE_KEY = 'ops-station-model-config-v1'
-const CAMERA_PRESET_STORAGE_KEY = 'ops-camera-preset-v1'
-const FALLBACK_SAVED_CAMERA = CAMERA_PRESETS[1].camera
+const CAMERA_PRESET_STORAGE_KEY = 'ops-camera-preset-v2'
+const FALLBACK_SAVED_CAMERA = CAMERA_03
 const MODEL_SCALE_MIN = 100
 const MODEL_SCALE_MAX = 10000
 const MODEL_ELEVATION_MIN = -100000
@@ -80,9 +90,9 @@ function loadSavedCamera() {
 }
 const FALLBACK_POSITIONS = {
   lianghekou: { left: '25%', top: '32%' },
-  kela: { left: '50%', top: '25%' },
-  zhalashan: { left: '67%', top: '54%' },
-  labashan: { left: '79%', top: '66%' },
+  kela: { left: '75%', top: '32%' },
+  zhalashan: { left: '25%', top: '70%' },
+  labashan: { left: '75%', top: '70%' },
 }
 const LIGHT_PRESETS = [
   ['dawn', '晨曦'],
@@ -98,7 +108,7 @@ const SUN_LIGHT_BY_PRESET = {
 }
 const OUTDOORS_DAY_AZIMUTH = 289
 const OUTDOORS_DAY_POLAR = 31
-const OUTDOORS_DAY_ELEVATION = 90 - OUTDOORS_DAY_POLAR
+const OUTDOORS_DAY_ELEVATION = 30
 
 function cloneLights(lights) {
   return (lights || []).map((light) => ({
@@ -153,7 +163,8 @@ function loadStationModelConfig() {
   if (typeof window === 'undefined') return { ...DEFAULT_STATION_MODEL_CONFIG }
   try {
     const stored = JSON.parse(window.localStorage.getItem(MODEL_CONFIG_STORAGE_KEY))
-    if (!stored) {
+    // Project placement defaults supersede caches saved before the height correction.
+    if (!stored || stored.placementVersion !== DEFAULT_STATION_MODEL_CONFIG.placementVersion) {
       return {
         ...DEFAULT_STATION_MODEL_CONFIG,
         stationElevations: { ...DEFAULT_STATION_MODEL_CONFIG.stationElevations },
@@ -169,6 +180,7 @@ function loadStationModelConfig() {
       ]),
     )
     return {
+      placementVersion: DEFAULT_STATION_MODEL_CONFIG.placementVersion,
       stationId: typeof stored?.stationId === 'string' ? stored.stationId : DEFAULT_STATION_MODEL_CONFIG.stationId,
       scale: clampModelParameter(stored?.scale, MODEL_SCALE_MIN, MODEL_SCALE_MAX, DEFAULT_STATION_MODEL_CONFIG.scale),
       rotation: clampModelParameter(stored?.rotation, -180, 180, DEFAULT_STATION_MODEL_CONFIG.rotation),
@@ -265,7 +277,7 @@ function addStationModelLayer(map, modelFeatures, modelUrl) {
         uri: modelUrl,
         // Strong direct light brightens equipment while restrained fill preserves shadow contrast.
         lightOverrides: {
-          'light-ambient-color': '#ffffff', 'light-ambient-intensity': 0.5,
+          'light-ambient-color': '#ffffff', 'light-ambient-intensity': 0.8,
           'light-directional-color': '#ffffff', 'light-directional-intensity': 1,
         },
         position: feature.geometry.coordinates,
@@ -377,40 +389,44 @@ function applyWeather(map, enabled) {
   } : null)
 }
 
-function StationDetail({ station, onEnter }) {
-  const alertCount = getAlertCount(station)
-  const tone = getStationTone(station)
-
+function StationDetail({ station, onEnter, onSelect }) {
+  const { tickets } = useApp()
+  const events = getStationEvents(station, tickets)
+  const status = station.status === 'stopped' ? '停机' : getAlertCount(station) ? '告警' : '运行中'
   return (
-    <article className={`map-station-detail tone-${tone}`}>
+    <article className={`map-station-detail tone-${getStationTone(station)}`} aria-label={`${station.name}运行卡片`}>
       <div className="map-detail-top">
         <div>
-          <strong>{station.name}</strong>
-          <span>{station.type} · 当前出力 {station.output || station.metrics?.power}</span>
+          <button className="map-detail-name" type="button" onClick={onSelect}><strong>{station.name}</strong></button>
+          <span>{station.output} · <em className={status === '告警' ? 'has-alert' : ''}>{status}</em></span>
         </div>
         <button className="map-detail-enter" type="button" onClick={onEnter}>
           进入场站 <ChevronRight size={14} aria-hidden="true" />
         </button>
       </div>
-      <div className="map-detail-health">
-        <span>设备健康度</span>
-        <strong>{station.health}<small>%</small></strong>
-        <div><i style={{ width: `${station.health}%` }} /></div>
+      <div className="map-detail-kpis">
+        {getStationKpis(station).map((metric) => (
+          <div key={metric.label}>
+            <span>{metric.label}</span><strong>{metric.value}</strong>
+            <small className={metric.state === '偏差' ? 'has-alert' : ''}>{metric.state}</small>
+          </div>
+        ))}
       </div>
-      <div className="map-detail-actions">
-        <span className={alertCount ? 'has-alert' : ''}>
-          {alertCount ? <TriangleAlert size={14} weight="fill" /> : <Check size={14} />}
-          {alertCount ? '智能诊断' : '无活动告警'}
-        </span>
-        <em className={alertCount ? 'has-alert' : ''}>
-          {alertCount ? `${alertCount} 项异常` : '运行正常'}
-        </em>
+      <div className="map-detail-events">
+        {events.length ? events.map((event) => (
+          <div className="map-detail-event" key={event.id}>
+            <div><strong title={event.title}>{event.title}</strong><em className={`severity-${event.severity}`}>{event.severity === 'urgent' ? '紧急' : event.severity === 'warning' ? '重要' : '一般'}</em></div>
+            <ol aria-label={`当前阶段：${EVENT_PHASES[event.phase]}`}>
+              {EVENT_PHASES.map((phase, index) => <li key={phase} className={index <= event.phase ? 'is-reached' : ''} aria-current={index === event.phase ? 'step' : undefined}><i />{phase}</li>)}
+            </ol>
+          </div>
+        )) : <span className="map-detail-empty"><Check size={14} />无活动事件 · 运行正常</span>}
       </div>
     </article>
   )
 }
 
-function StaticFallback({ stations, interactive, selected, onSelect, onEnter }) {
+function StaticFallback({ stations, interactive, onEnter, onSelect }) {
   return (
     <div className={`map-static-fallback ${interactive ? 'is-interactive' : ''}`} aria-hidden={interactive ? undefined : true}>
       <svg className="map-fallback-svg" viewBox="0 0 1200 520" role="img" aria-label="雅砻江流域数字孪生降级示意图">
@@ -432,18 +448,10 @@ function StaticFallback({ stations, interactive, selected, onSelect, onEnter }) 
         <path d="M12 160C190 98 342 126 482 82s276-22 409 15 214 32 309 4" fill="none" stroke="var(--ops-map-contour-soft)" />
       </svg>
       {interactive ? stations.map((station) => (
-        <button
-          className={`fallback-station-marker tone-${getStationTone(station)} ${selected.id === station.id ? 'is-selected' : ''}`}
-          key={station.id}
-          style={FALLBACK_POSITIONS[station.id]}
-          type="button"
-          onClick={() => onSelect(station)}
-        >
-          <span className="marker-pin"><StationIcon type={station.type} /></span>
-          <span><strong>{station.shortName || station.name}</strong><small>{station.output}</small></span>
-        </button>
+        <div className="fallback-station-card" key={station.id} style={FALLBACK_POSITIONS[station.id]}>
+          <StationDetail station={station} onEnter={() => onEnter(station)} onSelect={() => onSelect(station)} />
+        </div>
       )) : null}
-      {interactive ? <StationDetail station={selected} onEnter={onEnter} /> : null}
     </div>
   )
 }
@@ -543,9 +551,14 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
     mapStations.forEach((station) => {
       const node = markerRefs.current.get(station.id)
       if (!node) return
-      const point = map.project(station.mapCoordinates, getStationModelTopHeight(modelConfigRef.current, station.id))
+      // Models use sea-level elevation; map.project adds terrain elevation itself.
+      const terrainHeight = map.queryTerrainElevation(station.mapCoordinates) ?? 0
+      const point = map.project(station.mapCoordinates, getStationModelTopHeight(modelConfigRef.current, station.id) - terrainHeight)
       const visible = point.x > -180 && point.y > -90 && point.x < canvas.clientWidth + 180 && point.y < canvas.clientHeight + 90
-      node.style.transform = `translate3d(${point.x}px, ${point.y}px, 0)`
+      // Reserve the expanded width; the card grows upward from the model top.
+      const x = Math.max(158, Math.min(canvas.clientWidth - 158, point.x))
+      const y = point.y
+      node.style.transform = `translate3d(${x}px, ${y}px, 0)`
       node.style.opacity = visible ? '1' : '0'
       node.style.pointerEvents = visible ? 'auto' : 'none'
     })
@@ -589,7 +602,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
         map = new mapboxgl.Map({
           container: mapContainerRef.current,
           style: mapStyle,
-          ...DEFAULT_CAMERA,
+          ...CAMERA_03,
           antialias: true,
           attributionControl: false,
           maxPitch: 80,
@@ -780,7 +793,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
     if (!mapReady || !map || !map.getSource(terrain.source)) return
     try {
       map.setTerrain(!flat && terrainEnabled ? terrain : null)
-      map.easeTo({ pitch: flat ? 0 : DEFAULT_CAMERA.pitch, bearing: flat ? 0 : DEFAULT_CAMERA.bearing, duration: 720, essential: true })
+      map.easeTo({ pitch: flat ? 0 : CAMERA_03.pitch, bearing: flat ? 0 : CAMERA_03.bearing, duration: 720, essential: true })
     } catch {
       // A terrain toggle failure should not blank an otherwise usable map.
     }
@@ -898,7 +911,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
     const resetStationId = mapStations.find((station) => station.id === 'kela')?.id || mapStations[0]?.id
     setSelectedId(resetStationId)
     setModelStationId(resetStationId)
-    mapRef.current?.easeTo({ ...DEFAULT_CAMERA, pitch: flat ? 0 : DEFAULT_CAMERA.pitch, bearing: flat ? 0 : DEFAULT_CAMERA.bearing, duration: 900, essential: true })
+    mapRef.current?.easeTo({ ...CAMERA_03, pitch: flat ? 0 : CAMERA_03.pitch, bearing: flat ? 0 : CAMERA_03.bearing, duration: 900, essential: true })
   }
 
   const focusSelected = () => {
@@ -951,7 +964,6 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
   return (
     <section ref={panelRef} className={`digital-twin${pageFullscreen ? ' is-page-fullscreen' : ''}`} aria-label="雅砻江流域电站数字孪生">
       {RECORDING_MODE ? <style>{`
-        .digital-twin .map-station-detail,
         .digital-twin .map-legend,
         .digital-twin .mapboxgl-ctrl-scale { display: none !important; }
       `}</style> : null}
@@ -979,12 +991,10 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
       </header>
 
       <div className={`twin-canvas mapbox-twin-canvas ${flat ? 'is-flat' : ''}`}>
-        <StaticFallback stations={mapStations} interactive={Boolean(mapError)} selected={selected} onSelect={selectStation} onEnter={() => navigate(`/station/${selected.id}`)} />
+        <StaticFallback stations={mapStations} interactive={Boolean(mapError)} onSelect={selectStation} onEnter={(station) => navigate(`/station/${station.id}`)} />
         <div ref={mapContainerRef} className={`mapbox-canvas ${mapReady && !mapError ? 'is-ready' : ''}`} aria-label="雅砻江流域三维地形地图" />
 
-        {!mapError ? (
-          <>
-            <div className={`map-station-layer ${markersVisible ? '' : 'is-hidden'}`}>
+        <div className={`map-station-layer ${mapError ? 'is-hidden' : ''} ${markersVisible ? '' : 'is-hidden'}`}>
               {mapStations.map((station) => (
                 <div
                   className="map-station-anchor"
@@ -994,22 +1004,10 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
                     else markerRefs.current.delete(station.id)
                   }}
                 >
-                  <button
-                    className={`map-station-marker tone-${getStationTone(station)} ${selected.id === station.id ? 'is-selected' : ''}`}
-                    type="button"
-                    aria-label={`${station.name}，健康度 ${station.health}%`}
-                    onClick={() => selectStation(station)}
-                  >
-                    <span className="marker-pin"><StationIcon type={station.type} /></span>
-                    <span><strong>{station.shortName || station.name}</strong><small>{station.output}</small></span>
-                    {getAlertCount(station) ? <i>{getAlertCount(station)}</i> : null}
-                  </button>
+                  <StationDetail station={station} onSelect={() => selectStation(station)} onEnter={() => navigate(`/station/${station.id}`)} />
                 </div>
               ))}
-            </div>
-            {mapReady ? <StationDetail station={selected} onEnter={() => navigate(`/station/${selected.id}`)} /> : null}
-          </>
-        ) : null}
+        </div>
 
         {camerasOpen ? (
           <div className="map-layer-menu" role="dialog" aria-label="已保存镜头" style={{ left: 'auto', right: 16, top: 80 }} onKeyDown={(event) => { if (event.key === 'Escape') { setCamerasOpen(false); panelRef.current?.querySelector('[aria-label="镜头列表"]')?.focus() } }}>

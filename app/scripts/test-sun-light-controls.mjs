@@ -6,9 +6,9 @@ const source = readFileSync(new URL('../src/components/DigitalTwin.jsx', import.
 const constants = source.slice(source.indexOf('const SUN_LIGHT_BY_PRESET ='), source.indexOf('function cloneLights'))
 const values = runInNewContext(`${constants}; ({ SUN_LIGHT_BY_PRESET, OUTDOORS_DAY_AZIMUTH, OUTDOORS_DAY_POLAR, OUTDOORS_DAY_ELEVATION })`)
 
-assert.equal(values.OUTDOORS_DAY_AZIMUTH, 180)
-assert.equal(values.OUTDOORS_DAY_POLAR, 20)
-assert.equal(values.OUTDOORS_DAY_ELEVATION, 70)
+assert.equal(values.OUTDOORS_DAY_AZIMUTH, 289)
+assert.equal(values.OUTDOORS_DAY_POLAR, 31)
+assert.equal(values.OUTDOORS_DAY_ELEVATION, 30)
 for (const { direction } of Object.values(values.SUN_LIGHT_BY_PRESET)) {
   const elevation = 90 - direction[1]
   assert.ok(elevation >= 0 && elevation <= 90)
