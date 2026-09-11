@@ -26,6 +26,7 @@ import {
   STANDARD_TO_MERGED_STEP,
   stations,
 } from '../data/demoData.js'
+import projectMapConfig from '../data/mapConfig.json'
 
 // Bump the persisted demo schema whenever the workflow contract changes.  A
 // stale snapshot can contain tickets at an obsolete node and must never
@@ -387,9 +388,10 @@ export function AppProvider({ children }) {
   )
   const [toast, setToast] = useState(null)
   // 界面主题：dark 深色 / light 浅色
-  const [theme, setTheme] = useState(() =>
-    typeof window !== 'undefined' && window.localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark',
-  )
+  const [theme, setTheme] = useState(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem(THEME_KEY) : null
+    return ['light', 'dark'].includes(saved) ? saved : projectMapConfig.geospatial.theme
+  })
   // 界面模式：lui 对话式 / gui 卡片式（仅影响工作台 Smart Assistant 面板）
   const [uiMode, setUiMode] = useState(() =>
     typeof window !== 'undefined' && window.localStorage.getItem(UI_MODE_KEY) === 'gui' ? 'gui' : 'lui',

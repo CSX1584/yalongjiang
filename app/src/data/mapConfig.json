@@ -1,15 +1,15 @@
 {
   "modelConfig": {
     "placementVersion": 2,
-    "stationId": "labashan",
-    "scale": 4950,
-    "rotation": 141,
+    "stationId": "zhalashan",
+    "scale": 1650,
+    "rotation": 153,
     "elevation": -23100,
     "stationElevations": {
-      "lianghekou": -20700,
-      "kela": -21200,
-      "zhalashan": -21700,
-      "labashan": -23600
+      "lianghekou": -2600,
+      "kela": -2900,
+      "zhalashan": -5010,
+      "labashan": -27200
     },
     "lightingVersion": 1,
     "emissive": 0
@@ -60,5 +60,789 @@
     "风车": "#f5f7fa",
     "储能": "#d8dde5",
     "光伏板": "#17345f"
+  },
+  "geospatial": {
+    "environment": {
+      "dayOfYear": 170,
+      "timeOfDay": 15.6,
+      "coverage": 0.33,
+      "exposure": 10,
+      "cloudAltitude": 7050,
+      "haze": 1,
+      "aerialPerspective": 0.27,
+      "year": 2026
+    },
+    "camera": {
+      "position": [
+        -1135147.6373096337,
+        5521782.625265319,
+        2987225.5442679166
+      ],
+      "quaternion": [
+        -0.08373140014814247,
+        0.9185987611780382,
+        0.3823988451740734,
+        0.05418940672253475
+      ],
+      "up": [
+        -0.1783919226701927,
+        0.8635469933868838,
+        0.47165974190989124
+      ],
+      "fov": 75,
+      "zoom": 1,
+      "near": 2.057211104087559,
+      "far": 285670.8827177162
+    },
+    "cloudMotion": {
+      "localWeatherOffset": [
+        1.6870629000003263,
+        0
+      ],
+      "shapeOffset": [
+        0,
+        0,
+        0
+      ],
+      "shapeDetailOffset": [
+        0,
+        0,
+        0
+      ]
+    },
+    "fullscreen": true,
+    "theme": "light"
+  },
+  "presets": {
+    "defaultId": "a6a822d4-9609-4340-83e7-5c2dde658240",
+    "lastSelectedId": "6ca2cd0d-f82f-4dc1-89b3-3e59f924a8cc",
+    "items": [
+      {
+        "id": "initial",
+        "name": "当前默认参数",
+        "createdAt": "2026-09-11T11:47:20.676Z",
+        "config": {
+          "modelConfig": {
+            "placementVersion": 2,
+            "stationId": "lianghekou",
+            "scale": 550,
+            "rotation": 135,
+            "elevation": -23100,
+            "stationElevations": {
+              "lianghekou": -4200,
+              "kela": 3000,
+              "zhalashan": 900,
+              "labashan": -27200
+            },
+            "lightingVersion": 1,
+            "emissive": 0
+          },
+          "savedCamera": {
+            "center": [
+              101.45251411897169,
+              27.745808487079756
+            ],
+            "zoom": 10.594335144026546,
+            "pitch": 80,
+            "bearing": 0
+          },
+          "flat": false,
+          "lightPreset": "day",
+          "sunAzimuth": 289,
+          "sunElevation": 30,
+          "sunPositionCustom": true,
+          "glassConfig": {
+            "refThickness": 18.7,
+            "refDistance": 0.07,
+            "refFactor": 1.71,
+            "refDispersion": 12.3,
+            "blurRadius": 30,
+            "refFresnelRange": 30,
+            "refFresnelHardness": 20,
+            "refFresnelFactor": 20,
+            "glareRange": 24.38,
+            "glareHardness": 20,
+            "glareFactor": 90,
+            "glareConvergence": 50,
+            "glareOppositeFactor": 80,
+            "glareAngle": -45,
+            "tintOpacity": 32.16,
+            "shadowExpand": 17.54,
+            "shadowFactor": 15,
+            "shadowX": 0,
+            "shadowY": -10,
+            "blurEdge": true,
+            "tintColor": "#ffffff"
+          },
+          "terrainEnabled": true,
+          "weatherEnabled": false,
+          "markersVisible": true,
+          "modelVisible": true,
+          "materialColors": {
+            "底座": "#b7b6af",
+            "风车": "#f5f7fa",
+            "储能": "#d8dde5",
+            "光伏板": "#17345f"
+          },
+          "geospatial": {
+            "environment": {
+              "dayOfYear": 170,
+              "timeOfDay": 15.7,
+              "coverage": 0.32,
+              "exposure": 10,
+              "cloudAltitude": 5600,
+              "haze": 1,
+              "aerialPerspective": 0.45,
+              "year": 2026
+            },
+            "camera": {
+              "position": [
+                -1138966.3410985672,
+                5517180.74906055,
+                2990507.001934798
+              ],
+              "quaternion": [
+                -0.09107733798257407,
+                0.9101764781580449,
+                0.40375680333615244,
+                -0.016252411316396594
+              ],
+              "up": [
+                -0.1783919226701927,
+                0.8635469933868838,
+                0.47165974190989124
+              ],
+              "fov": 75,
+              "zoom": 1,
+              "near": 1,
+              "far": 243426.43024152605
+            },
+            "cloudMotion": {
+              "localWeatherOffset": [
+                0.9215407000000976,
+                0
+              ],
+              "shapeOffset": [
+                0,
+                0,
+                0
+              ],
+              "shapeDetailOffset": [
+                0,
+                0,
+                0
+              ]
+            },
+            "fullscreen": true,
+            "theme": "light"
+          }
+        }
+      },
+      {
+        "id": "b50dad54-a439-4fb0-b525-e240ee6056f8",
+        "name": "参数 2026/9/11 20:05:51",
+        "createdAt": "2026-09-11T12:05:51.342Z",
+        "config": {
+          "modelConfig": {
+            "placementVersion": 2,
+            "stationId": "lianghekou",
+            "scale": 1650,
+            "rotation": 137,
+            "elevation": -23100,
+            "stationElevations": {
+              "lianghekou": -3200,
+              "kela": -2900,
+              "zhalashan": -4700,
+              "labashan": -27200
+            },
+            "lightingVersion": 1,
+            "emissive": 0
+          },
+          "savedCamera": {
+            "center": [
+              101.45251411897169,
+              27.745808487079756
+            ],
+            "zoom": 10.594335144026546,
+            "pitch": 80,
+            "bearing": 0
+          },
+          "flat": false,
+          "lightPreset": "day",
+          "sunAzimuth": 289,
+          "sunElevation": 30,
+          "sunPositionCustom": true,
+          "glassConfig": {
+            "refThickness": 18.7,
+            "refDistance": 0.07,
+            "refFactor": 1.71,
+            "refDispersion": 12.3,
+            "blurRadius": 30,
+            "refFresnelRange": 30,
+            "refFresnelHardness": 20,
+            "refFresnelFactor": 20,
+            "glareRange": 24.38,
+            "glareHardness": 20,
+            "glareFactor": 90,
+            "glareConvergence": 50,
+            "glareOppositeFactor": 80,
+            "glareAngle": -45,
+            "tintOpacity": 32.16,
+            "shadowExpand": 17.54,
+            "shadowFactor": 15,
+            "shadowX": 0,
+            "shadowY": -10,
+            "blurEdge": true,
+            "tintColor": "#ffffff"
+          },
+          "terrainEnabled": true,
+          "weatherEnabled": false,
+          "markersVisible": true,
+          "modelVisible": true,
+          "materialColors": {
+            "底座": "#b7b6af",
+            "风车": "#f5f7fa",
+            "储能": "#d8dde5",
+            "光伏板": "#17345f"
+          },
+          "geospatial": {
+            "environment": {
+              "dayOfYear": 170,
+              "timeOfDay": 15.7,
+              "coverage": 0.32,
+              "exposure": 10,
+              "cloudAltitude": 9150,
+              "haze": 1,
+              "aerialPerspective": 0.45,
+              "year": 2026
+            },
+            "camera": {
+              "position": [
+                -1138682.194921592,
+                5521621.109984296,
+                2987340.6340752216
+              ],
+              "quaternion": [
+                -0.09176802251867236,
+                0.9148439190118749,
+                0.39263776703500053,
+                -0.021790314081621662
+              ],
+              "up": [
+                -0.1783919226701927,
+                0.8635469933868838,
+                0.47165974190989124
+              ],
+              "fov": 75,
+              "zoom": 1,
+              "near": 2.3980045008992508,
+              "far": 297570.58920803777
+            },
+            "cloudMotion": {
+              "localWeatherOffset": [
+                1.2103694000000902,
+                0
+              ],
+              "shapeOffset": [
+                0,
+                0,
+                0
+              ],
+              "shapeDetailOffset": [
+                0,
+                0,
+                0
+              ]
+            },
+            "fullscreen": true,
+            "theme": "light"
+          }
+        }
+      },
+      {
+        "id": "71966018-946e-438f-b170-020ed7c6cfd6",
+        "name": "参数 2026/9/11 20:10:06",
+        "createdAt": "2026-09-11T12:10:06.616Z",
+        "config": {
+          "modelConfig": {
+            "placementVersion": 2,
+            "stationId": "zhalashan",
+            "scale": 1650,
+            "rotation": 152,
+            "elevation": -23100,
+            "stationElevations": {
+              "lianghekou": -2600,
+              "kela": -2900,
+              "zhalashan": -5200,
+              "labashan": -27200
+            },
+            "lightingVersion": 1,
+            "emissive": 0
+          },
+          "savedCamera": {
+            "center": [
+              101.45251411897169,
+              27.745808487079756
+            ],
+            "zoom": 10.594335144026546,
+            "pitch": 80,
+            "bearing": 0
+          },
+          "flat": false,
+          "lightPreset": "day",
+          "sunAzimuth": 289,
+          "sunElevation": 30,
+          "sunPositionCustom": true,
+          "glassConfig": {
+            "refThickness": 18.7,
+            "refDistance": 0.07,
+            "refFactor": 1.71,
+            "refDispersion": 12.3,
+            "blurRadius": 30,
+            "refFresnelRange": 30,
+            "refFresnelHardness": 20,
+            "refFresnelFactor": 20,
+            "glareRange": 24.38,
+            "glareHardness": 20,
+            "glareFactor": 90,
+            "glareConvergence": 50,
+            "glareOppositeFactor": 80,
+            "glareAngle": -45,
+            "tintOpacity": 32.16,
+            "shadowExpand": 17.54,
+            "shadowFactor": 15,
+            "shadowX": 0,
+            "shadowY": -10,
+            "blurEdge": true,
+            "tintColor": "#ffffff"
+          },
+          "terrainEnabled": true,
+          "weatherEnabled": false,
+          "markersVisible": true,
+          "modelVisible": true,
+          "materialColors": {
+            "底座": "#b7b6af",
+            "风车": "#f5f7fa",
+            "储能": "#d8dde5",
+            "光伏板": "#17345f"
+          },
+          "geospatial": {
+            "environment": {
+              "dayOfYear": 170,
+              "timeOfDay": 15.6,
+              "coverage": 0.33,
+              "exposure": 10,
+              "cloudAltitude": 7050,
+              "haze": 1,
+              "aerialPerspective": 0.27,
+              "year": 2026
+            },
+            "camera": {
+              "position": [
+                -1138960.5802746422,
+                5521576.629266215,
+                2987135.1032113233
+              ],
+              "quaternion": [
+                -0.09247939238060723,
+                0.9157198370465538,
+                0.3899736855503527,
+                -0.02872745381375556
+              ],
+              "up": [
+                -0.1783919226701927,
+                0.8635469933868838,
+                0.47165974190989124
+              ],
+              "fov": 75,
+              "zoom": 1,
+              "near": 2.3447295578532765,
+              "far": 295729.11958347575
+            },
+            "cloudMotion": {
+              "localWeatherOffset": [
+                1.4597332000004315,
+                0
+              ],
+              "shapeOffset": [
+                0,
+                0,
+                0
+              ],
+              "shapeDetailOffset": [
+                0,
+                0,
+                0
+              ]
+            },
+            "fullscreen": true,
+            "theme": "light"
+          }
+        }
+      },
+      {
+        "id": "45e88d30-6dda-4d53-bd46-706083fb1da8",
+        "name": "参数 2026/9/11 20:15:05",
+        "createdAt": "2026-09-11T12:15:05.909Z",
+        "config": {
+          "modelConfig": {
+            "placementVersion": 2,
+            "stationId": "zhalashan",
+            "scale": 1650,
+            "rotation": 153,
+            "elevation": -23100,
+            "stationElevations": {
+              "lianghekou": -2600,
+              "kela": -2900,
+              "zhalashan": -5200,
+              "labashan": -27200
+            },
+            "lightingVersion": 1,
+            "emissive": 0
+          },
+          "savedCamera": {
+            "center": [
+              101.45251411897169,
+              27.745808487079756
+            ],
+            "zoom": 10.594335144026546,
+            "pitch": 80,
+            "bearing": 0
+          },
+          "flat": false,
+          "lightPreset": "day",
+          "sunAzimuth": 289,
+          "sunElevation": 30,
+          "sunPositionCustom": true,
+          "glassConfig": {
+            "refThickness": 18.7,
+            "refDistance": 0.07,
+            "refFactor": 1.71,
+            "refDispersion": 12.3,
+            "blurRadius": 30,
+            "refFresnelRange": 30,
+            "refFresnelHardness": 20,
+            "refFresnelFactor": 20,
+            "glareRange": 24.38,
+            "glareHardness": 20,
+            "glareFactor": 90,
+            "glareConvergence": 50,
+            "glareOppositeFactor": 80,
+            "glareAngle": -45,
+            "tintOpacity": 32.16,
+            "shadowExpand": 17.54,
+            "shadowFactor": 15,
+            "shadowX": 0,
+            "shadowY": -10,
+            "blurEdge": true,
+            "tintColor": "#ffffff"
+          },
+          "terrainEnabled": true,
+          "weatherEnabled": false,
+          "markersVisible": true,
+          "modelVisible": true,
+          "materialColors": {
+            "底座": "#b7b6af",
+            "风车": "#f5f7fa",
+            "储能": "#d8dde5",
+            "光伏板": "#17345f"
+          },
+          "geospatial": {
+            "environment": {
+              "dayOfYear": 170,
+              "timeOfDay": 15.6,
+              "coverage": 0.33,
+              "exposure": 10,
+              "cloudAltitude": 7050,
+              "haze": 1,
+              "aerialPerspective": 0.27,
+              "year": 2026
+            },
+            "camera": {
+              "position": [
+                -1134043.4484462116,
+                5522924.394623482,
+                2985533.714443573
+              ],
+              "quaternion": [
+                -0.08365023938454681,
+                0.918667157921459,
+                0.38225140901388416,
+                0.054195486106477224
+              ],
+              "up": [
+                -0.1783919226701927,
+                0.8635469933868838,
+                0.47165974190989124
+              ],
+              "fov": 75,
+              "zoom": 1,
+              "near": 2.0572111174336754,
+              "far": 285551.8701156582
+            },
+            "cloudMotion": {
+              "localWeatherOffset": [
+                1.633227500000325,
+                0
+              ],
+              "shapeOffset": [
+                0,
+                0,
+                0
+              ],
+              "shapeDetailOffset": [
+                0,
+                0,
+                0
+              ]
+            },
+            "fullscreen": true,
+            "theme": "light"
+          }
+        }
+      },
+      {
+        "id": "a6a822d4-9609-4340-83e7-5c2dde658240",
+        "name": "参数 2026/9/11 20:41:04",
+        "createdAt": "2026-09-11T12:41:04.533Z",
+        "config": {
+          "modelConfig": {
+            "placementVersion": 2,
+            "stationId": "zhalashan",
+            "scale": 1650,
+            "rotation": 153,
+            "elevation": -23100,
+            "stationElevations": {
+              "lianghekou": -2600,
+              "kela": -2900,
+              "zhalashan": -5010,
+              "labashan": -27200
+            },
+            "lightingVersion": 1,
+            "emissive": 0
+          },
+          "savedCamera": {
+            "center": [
+              101.45251411897169,
+              27.745808487079756
+            ],
+            "zoom": 10.594335144026546,
+            "pitch": 80,
+            "bearing": 0
+          },
+          "flat": false,
+          "lightPreset": "day",
+          "sunAzimuth": 289,
+          "sunElevation": 30,
+          "sunPositionCustom": true,
+          "glassConfig": {
+            "refThickness": 18.7,
+            "refDistance": 0.07,
+            "refFactor": 1.71,
+            "refDispersion": 12.3,
+            "blurRadius": 30,
+            "refFresnelRange": 30,
+            "refFresnelHardness": 20,
+            "refFresnelFactor": 20,
+            "glareRange": 24.38,
+            "glareHardness": 20,
+            "glareFactor": 90,
+            "glareConvergence": 50,
+            "glareOppositeFactor": 80,
+            "glareAngle": -45,
+            "tintOpacity": 32.16,
+            "shadowExpand": 17.54,
+            "shadowFactor": 15,
+            "shadowX": 0,
+            "shadowY": -10,
+            "blurEdge": true,
+            "tintColor": "#ffffff"
+          },
+          "terrainEnabled": true,
+          "weatherEnabled": false,
+          "markersVisible": true,
+          "modelVisible": true,
+          "materialColors": {
+            "底座": "#b7b6af",
+            "风车": "#f5f7fa",
+            "储能": "#d8dde5",
+            "光伏板": "#17345f"
+          },
+          "geospatial": {
+            "environment": {
+              "dayOfYear": 170,
+              "timeOfDay": 15.6,
+              "coverage": 0.33,
+              "exposure": 10,
+              "cloudAltitude": 7050,
+              "haze": 1,
+              "aerialPerspective": 0.27,
+              "year": 2026
+            },
+            "camera": {
+              "position": [
+                -1135147.6373096337,
+                5521782.625265319,
+                2987225.5442679166
+              ],
+              "quaternion": [
+                -0.08373140014814247,
+                0.9185987611780382,
+                0.3823988451740734,
+                0.05418940672253475
+              ],
+              "up": [
+                -0.1783919226701927,
+                0.8635469933868838,
+                0.47165974190989124
+              ],
+              "fov": 75,
+              "zoom": 1,
+              "near": 2.057211104087559,
+              "far": 285670.8827177162
+            },
+            "cloudMotion": {
+              "localWeatherOffset": [
+                1.6870629000003263,
+                0
+              ],
+              "shapeOffset": [
+                0,
+                0,
+                0
+              ],
+              "shapeDetailOffset": [
+                0,
+                0,
+                0
+              ]
+            },
+            "fullscreen": true,
+            "theme": "light"
+          }
+        }
+      },
+      {
+        "id": "6ca2cd0d-f82f-4dc1-89b3-3e59f924a8cc",
+        "name": "参数 2026/9/11 20:46:29",
+        "createdAt": "2026-09-11T12:46:29.323Z",
+        "config": {
+          "modelConfig": {
+            "placementVersion": 2,
+            "stationId": "zhalashan",
+            "scale": 1650,
+            "rotation": 153,
+            "elevation": -23100,
+            "stationElevations": {
+              "lianghekou": -2600,
+              "kela": -2900,
+              "zhalashan": -5010,
+              "labashan": -27200
+            },
+            "lightingVersion": 1,
+            "emissive": 0
+          },
+          "savedCamera": {
+            "center": [
+              101.45251411897169,
+              27.745808487079756
+            ],
+            "zoom": 10.594335144026546,
+            "pitch": 80,
+            "bearing": 0
+          },
+          "flat": false,
+          "lightPreset": "day",
+          "sunAzimuth": 289,
+          "sunElevation": 30,
+          "sunPositionCustom": true,
+          "glassConfig": {
+            "refThickness": 18.7,
+            "refDistance": 0.07,
+            "refFactor": 1.71,
+            "refDispersion": 12.3,
+            "blurRadius": 30,
+            "refFresnelRange": 30,
+            "refFresnelHardness": 20,
+            "refFresnelFactor": 20,
+            "glareRange": 24.38,
+            "glareHardness": 20,
+            "glareFactor": 90,
+            "glareConvergence": 50,
+            "glareOppositeFactor": 80,
+            "glareAngle": -45,
+            "tintOpacity": 32.16,
+            "shadowExpand": 17.54,
+            "shadowFactor": 15,
+            "shadowX": 0,
+            "shadowY": -10,
+            "blurEdge": true,
+            "tintColor": "#ffffff"
+          },
+          "terrainEnabled": true,
+          "weatherEnabled": false,
+          "markersVisible": true,
+          "modelVisible": true,
+          "materialColors": {
+            "底座": "#b7b6af",
+            "风车": "#f5f7fa",
+            "储能": "#d8dde5",
+            "光伏板": "#17345f"
+          },
+          "geospatial": {
+            "environment": {
+              "dayOfYear": 170,
+              "timeOfDay": 15.6,
+              "coverage": 0.33,
+              "exposure": 10,
+              "cloudAltitude": 7050,
+              "haze": 1,
+              "aerialPerspective": 0.27,
+              "year": 2026
+            },
+            "camera": {
+              "position": [
+                -1135147.6373096337,
+                5521782.625265319,
+                2987225.5442679166
+              ],
+              "quaternion": [
+                -0.08373140014814247,
+                0.9185987611780382,
+                0.3823988451740734,
+                0.05418940672253475
+              ],
+              "up": [
+                -0.1783919226701927,
+                0.8635469933868838,
+                0.47165974190989124
+              ],
+              "fov": 75,
+              "zoom": 1,
+              "near": 2.057211104087559,
+              "far": 285670.8827177162
+            },
+            "cloudMotion": {
+              "localWeatherOffset": [
+                1.8120516000003997,
+                0
+              ],
+              "shapeOffset": [
+                0,
+                0,
+                0
+              ],
+              "shapeDetailOffset": [
+                0,
+                0,
+                0
+              ]
+            },
+            "fullscreen": true,
+            "theme": "light"
+          }
+        }
+      }
+    ]
   }
 }

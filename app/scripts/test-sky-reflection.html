@@ -1,0 +1,52 @@
+<!doctype html><meta charset="utf-8"><title>Sky reflection GPU check</title>
+<style>body{margin:24px;background:#171717;color:white;font:14px system-ui}canvas{width:512px;height:256px;display:block}pre{white-space:pre-wrap}</style>
+<pre id="result">Loading the real sky and cloud reflection probe…</pre>
+<script type="module">
+import * as THREE from 'three'
+import { CloudsEffect } from '@takram/three-clouds'
+import { SkyMaterial, PrecomputedTexturesGenerator, getSunDirectionECEF } from '@takram/three-atmosphere'
+import { Geodetic, DataTextureLoader, parseUint8Array, STBNLoader } from '@takram/three-geospatial'
+import { SkyReflectionProbe } from '/src/components/skyReflectionProbe.js'
+const result=document.querySelector('#result')
+try {
+ const renderer=new THREE.WebGLRenderer({antialias:false})
+ renderer.setSize(512,256); document.body.append(renderer.domElement)
+ const generator=new PrecomputedTexturesGenerator(renderer); await generator.update()
+ const atmosphere=generator.textures, loader=new THREE.TextureLoader()
+ const volume=(name,size)=>new DataTextureLoader(THREE.Data3DTexture,parseUint8Array,{width:size,height:size,depth:size,format:THREE.RedFormat,minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,wrapS:THREE.RepeatWrapping,wrapT:THREE.RepeatWrapping,wrapR:THREE.RepeatWrapping}).loadAsync(`/sky/clouds/${name}.bin`)
+ const [weather,shape,detail,turbulence,stbn]=await Promise.all([loader.loadAsync('/sky/clouds/local_weather.png'),volume('shape',128),volume('shape_detail',32),loader.loadAsync('/sky/clouds/turbulence.png'),new STBNLoader().loadAsync('/sky/stbn.bin')])
+ for(const t of [weather,turbulence]){t.wrapS=t.wrapT=THREE.RepeatWrapping;t.needsUpdate=true}
+ const source=new CloudsEffect()
+ Object.assign(source,atmosphere,{localWeatherTexture:weather,shapeTexture:shape,shapeDetailTexture:detail,turbulenceTexture:turbulence,stbnTexture:stbn})
+ source.cloudLayers.forEach(layer=>{layer.altitude+=4850})
+ getSunDirectionECEF(new Date('2026-06-20T08:00:00Z'),source.sunDirection)
+ const skyScene=new THREE.Scene(), material=new SkyMaterial({...atmosphere,sun:false,moon:false})
+ material.sunDirection.copy(source.sunDirection)
+ const sky=new THREE.Mesh(new THREE.PlaneGeometry(2,2),material);sky.frustumCulled=false;skyScene.add(sky)
+ const position=new Geodetic(101.672*Math.PI/180,28.142*Math.PI/180,3900).toECEF()
+ const probe=new SkyReflectionProbe(renderer,skyScene,source,atmosphere)
+ function capture(coverage,key){
+   source.coverage=coverage
+   for(let face=0;face<6;face++)probe.update(position,key,face*16)
+   const target=probe.environment
+   const pixels=new Uint16Array(target.width*target.height*4)
+   renderer.readRenderTargetPixels(target,0,0,target.width,target.height,pixels)
+   return pixels
+ }
+ const clear=capture(0,'clear'), cloudy=capture(.85,'cloudy')
+ let changed=0, energy=0
+ for(let i=0;i<clear.length;i++)if(i%4!==3){const a=THREE.DataUtils.fromHalfFloat(clear[i]),b=THREE.DataUtils.fromHalfFloat(cloudy[i]);if(Number.isFinite(a)&&Number.isFinite(b)){energy+=Math.abs(b);if(Math.abs(a-b)>.001)changed++}}
+ // A culled copy quad once left most cube faces black. Require broad cloud coverage.
+ if(changed<10000 || energy<=0)throw new Error(`Clouds missing from reflection: changed=${changed}, energy=${energy}`)
+ const view=new THREE.Scene();view.background=probe.cube.texture
+ const camera=new THREE.PerspectiveCamera(90,2,.1,10);camera.up.set(0,0,1);camera.lookAt(new THREE.Vector3(-.18,.86,.47))
+ renderer.toneMapping=THREE.AgXToneMapping;renderer.toneMappingExposure=10
+ renderer.render(view,camera)
+ result.textContent=JSON.stringify({passed:true,changedReflectionChannels:changed,skyEnergy:energy,glassCoatRoughness:.08},null,2)
+ addEventListener('pagehide',()=>{
+   probe.dispose();source.dispose();sky.geometry.dispose();material.dispose();generator.dispose()
+   for(const texture of [weather,shape,detail,turbulence,stbn])texture.dispose()
+   renderer.dispose()
+ },{once:true})
+} catch(error){result.textContent=String(error.stack||error);console.error(error)}
+</script>

@@ -11,7 +11,7 @@ export const TERRAIN_SHADOW_BLEND = {
   blendSrcAlpha: THREE.ZeroFactor, blendDstAlpha: THREE.OneFactor,
 }
 
-function concreteTexture() {
+export function concreteTexture() {
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = 512
   const ctx = canvas.getContext('2d')
@@ -48,7 +48,7 @@ export function materialKind(name) {
   return 'metal'
 }
 
-function disposeTree(root) {
+export function disposeTree(root) {
   const resources = new Set()
   root.traverse(node => {
     if (node.geometry) resources.add(node.geometry)
@@ -109,10 +109,15 @@ export function upgradeStationMaterials(model, concrete, environment, cloudUnifo
     material.envMapIntensity = 1
     if (kind === 'solar') {
       material.color.set('#c4cbd0')
-      material.metalness = 0.1
-      material.roughness = lightTheme ? 0.22 : 0.09
-      material.clearcoat = lightTheme ? 0.85 : 1
-      material.clearcoatRoughness = lightTheme ? 0.18 : 0.025
+      // A continuous glass coat sits above the cell texture and baked normals.
+      // Keep only slight frosting; old roughness/metal maps describe the cells.
+      material.metalnessMap = null
+      material.roughnessMap = null
+      material.metalness = 0
+      material.roughness = 0.16
+      material.clearcoat = 1
+      material.clearcoatRoughness = 0.08
+      material.ior = 1.5
       material.envMapIntensity = 1.35
       if (environment) {
         // The light-theme glass softly filters the sky reflection; the cell texture stays sharp.
@@ -230,7 +235,7 @@ export function upgradeStationMaterials(model, concrete, environment, cloudUnifo
         outgoingLight = mix(outgoingLight, stationHazeColor, min(.12, 1. - exp(-stationDistance * stationDistance)));
         #include <opaque_fragment>`)
     }
-    material.customProgramCacheKey = () => `station-moving-cloud-${kind}-${node.name.includes('储能')}-${lightTheme}-v10`
+    material.customProgramCacheKey = () => `station-moving-cloud-${kind}-${node.name.includes('储能')}-${lightTheme}-v11`
     material.shadowSide = THREE.DoubleSide
     node.material = material
     old.dispose()

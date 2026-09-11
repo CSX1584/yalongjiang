@@ -14,6 +14,8 @@ upgradeStationMaterials(scene, concrete)
 const [solar, storage, support, base] = scene.children
 assert.equal(solar.material.map, panelMap, 'Keep original photovoltaic cell texture')
 assert.equal(solar.material.clearcoat, 1)
+assert.equal(solar.material.clearcoatRoughness, 0.08, 'The glass coat has only micro frosting')
+assert.equal(solar.material.metalness, 0, 'Solar cover glass remains dielectric')
 assert.ok(solar.material.roughness < storage.material.roughness)
 assert.ok(storage.material.metalness > 0.3)
 assert.ok(support.material.metalness > storage.material.metalness)
@@ -76,7 +78,9 @@ for (const lightTheme of [false, true]) {
     const localReflection = lightTheme && mesh.name === '光伏面板'
     assert.equal(compiled.fragmentShader.includes('textureLod(cloudEnvironment,'), localReflection, 'Light-theme frost filters only the sky reflection')
     if (localReflection) {
-      assert.ok(mesh.material.roughness >= .2 && mesh.material.clearcoatRoughness >= .15, 'Solar glass has a soft highlight instead of a mirror finish')
+      assert.equal(mesh.material.roughness, .16, 'The cell layer keeps a slightly softened finish')
+      assert.equal(mesh.material.clearcoatRoughness, .08, 'Continuous top glass reflects the sky with slight frosting')
+      assert.equal(mesh.material.roughnessMap, null, 'Baked cell roughness cannot roughen the glass cover')
     }
     assert.equal(compiled.fragmentShader.includes('vec3 panelPosition = ((stationWorld - stationCloudOrigin) / stationUnits).xzy;'), localReflection, 'Cloud reflections must account for each position across the panel')
     assert.equal(compiled.fragmentShader.includes('reflectedRay * cloudDistance - stationReflectionDrift'), localReflection, 'Reflection footprints move with cloud advection between captures')

@@ -1,0 +1,61 @@
+<!doctype html><meta charset="utf-8"><title>Scene parameter interaction check</title>
+<style>body{padding:24px;font:14px system-ui;background:#f5f5f5}#controls{width:280px}input{display:block;width:200px}pre{white-space:pre-wrap}</style>
+<div id="controls"></div><pre id="result">Running parameter interaction checks…</pre>
+<script type="module">
+import React, { act } from 'react'
+import { createRoot } from 'react-dom/client'
+import SceneParameter from '/src/components/SceneParameter.jsx'
+globalThis.IS_REACT_ACT_ENVIRONMENT = true
+const root = createRoot(document.querySelector('#controls'))
+let value = 50, submissions = 0, checks = 0
+const render = () => root.render(React.createElement('form', { onSubmit: e => { e.preventDefault(); submissions++ } }, React.createElement(SceneParameter, {
+  label: '测试参数', min: -100, max: 100, step: 1, fineStep: .1, value,
+  onChange: next => { value = next; render() },
+})))
+const assert = (condition, message) => { if (!condition) throw new Error(message); checks++ }
+try {
+  await act(render)
+  const number = document.querySelector('input[type=number]'), range = document.querySelector('input[type=range]')
+  // Synthetic events cannot acquire native capture; exercise the real React drag handlers.
+  range.setPointerCapture = () => {}
+  const width = range.getBoundingClientRect().width - 14
+  const position = () => range.getBoundingClientRect().left + 7 + (value + 100) / 200 * width
+  const reset = async next => { await act(() => { value = next; render() }) }
+  const pointer = async (type, x, shiftKey = false) => act(() => range.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1, button: 0, clientX: x, shiftKey })))
+  const type = async text => act(() => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(number, text)
+    number.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  const key = async (input, key, shiftKey = false) => act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key, shiftKey, bubbles: true, cancelable: true })))
+  await type('-12.345')
+  assert(value === -12.345 && Number(range.value) === value, 'Typed negative decimal must update the scene and slider')
+  await type('')
+  assert(value === -12.345, 'Empty input must not become zero or NaN')
+  await act(() => number.dispatchEvent(new FocusEvent('focusout', { bubbles: true })))
+  assert(Number(number.value) === value, 'Blur must restore the last valid value')
+  await type('999')
+  assert(value === -12.345, 'Out-of-range drafts must not reach the scene')
+  await act(() => number.dispatchEvent(new FocusEvent('focusout', { bubbles: true })))
+  assert(value === 100, 'Out-of-range input must clamp on confirmation')
+  await act(() => number.focus()); await type('0'); await key(number, 'Enter')
+  assert(value === 0 && submissions === 0, 'Enter must confirm zero without saving a preset')
+  await reset(50)
+  let x = position()
+  await pointer('pointerdown', x); await pointer('pointermove', x + width / 10); await pointer('pointerup', x + width / 10)
+  assert(value === 70, 'Normal drag must follow the slider range')
+  await reset(50); x = position()
+  await pointer('pointerdown', x, true); await pointer('pointermove', x + width / 10, true)
+  assert(value === 52, 'Shift drag must move exactly ten times slower')
+  await pointer('pointermove', x + width / 5, false)
+  assert(value === 72, 'Releasing Shift mid-drag must continue from the fine value')
+  await pointer('pointercancel', x + width / 5); await pointer('pointermove', x, true)
+  assert(value === 72, 'Cancelled drags must stop updating')
+  await key(range, 'ArrowLeft', true)
+  assert(value === 71.9, 'Shift + arrow keys must use the fine step')
+  await key(range, 'End'); await key(range, 'ArrowRight')
+  assert(value === 100, 'Keyboard adjustment must respect the maximum')
+  await key(range, 'Home'); await key(range, 'ArrowLeft', true)
+  assert(value === -100, 'Keyboard adjustment must respect the minimum')
+  document.querySelector('#result').textContent = `PASS: ${checks} checks — typing, boundaries, Enter, normal/fine drag, modifier changes, cancellation and keyboard.`
+} catch (error) { document.querySelector('#result').textContent = `FAIL: ${error.stack}`; console.error(error) }
+</script>

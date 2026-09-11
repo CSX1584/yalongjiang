@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Model cloud shadow GPU check</title>
+<body><pre id="result">Running GPU shadow check…</pre>
+<script type="module">
+import * as THREE from 'three'
+import { ModelCloudShadow } from '../src/components/geospatialCloudShadow.js'
+
+// Run through Vite at /scripts/test-model-cloud-shadow.html. No Google requests.
+const output = document.querySelector('#result')
+const renderer = new THREE.WebGLRenderer()
+const target = new THREE.WebGLRenderTarget(32, 32)
+const camera = new THREE.PerspectiveCamera(50, 1, .1, 100)
+camera.position.z = 2
+const scene = new THREE.Scene()
+const sun = new THREE.DirectionalLight(0xffffff, 2)
+sun.position.z = 1
+scene.add(sun, new THREE.AmbientLight(0xffffff, .4))
+const material = new THREE.MeshPhysicalMaterial({ roughness: .5, clearcoat: 1 })
+const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material)
+scene.add(mesh)
+const receiver = new ModelCloudShadow()
+receiver.apply(material)
+const data = new Float32Array(4 * 4 * 3 * 4)
+const map = new THREE.DataArrayTexture(data, 4, 4, 3)
+map.format = THREE.RGBAFormat
+map.type = THREE.FloatType
+const u = receiver.uniforms
+u.stationShadowReady.value = true
+u.stationShadowMap.value = map
+u.stationShadowTopRadius.value = 10
+u.stationShadowSun.value.set(0, 0, 1)
+u.stationShadowFar.value = 100
+u.stationShadowIntervals.value.forEach(interval => interval.set(0, 1))
+const pixel = new Uint8Array(4)
+const check = (condition, message) => { if (!condition) throw new Error(message) }
+function sample(opticalDepth, light = 2, height = 0, frontDepth = 0) {
+  for (let i = 0; i < data.length; i += 4) data.set([frontDepth, 1, opticalDepth, 0], i)
+  map.needsUpdate = true
+  sun.intensity = light
+  mesh.position.z = height
+  camera.position.z = height + 2
+  renderer.setRenderTarget(target)
+  renderer.render(scene, camera)
+  renderer.readRenderTargetPixels(target, 16, 16, 1, 1, pixel)
+  check(renderer.getContext().getError() === 0, 'WebGL compilation/rendering failed')
+  return pixel[0]
+}
+try {
+  const clear = sample(0), cloud = sample(8), partial = sample(8, 2, 0, 9.5)
+  const ambientClear = sample(0, 0), ambientCloud = sample(8, 0)
+  const above = sample(8, 2, 20)
+  check(clear > cloud + 40, 'Dense cloud must darken the PBR surface')
+  check(partial > cloud && partial < clear, 'Receiver height must change partial cloud attenuation')
+  check(ambientClear === ambientCloud, 'Clouds must preserve indirect ambient light')
+  check(above > cloud + 40, 'A surface above the cloud must stay sunlit')
+  output.textContent = 'PASS — PBR cloud shadows, partial depth, ambient preservation, above-cloud receiver\n' +
+    JSON.stringify({ clear, cloud, partial, ambientClear, ambientCloud, above }, null, 2)
+} catch (error) {
+  output.textContent = 'FAIL — ' + error.message
+  throw error
+} finally {
+  mesh.geometry.dispose(); material.dispose(); map.dispose(); target.dispose(); renderer.dispose()
+}
+</script></body></html>

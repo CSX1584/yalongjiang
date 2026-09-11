@@ -14238,6 +14238,15 @@ button {
     inset 0 1px 1px var(--ops-station-glass-rim),
     inset 0 -1px 1px rgb(0 0 0 / 12%);
 }
+[data-theme='light'] .digital-twin .map-station-detail {
+  --ops-text-primary: rgb(0 0 0 / 88%);
+  --ops-text-secondary: rgb(0 0 0 / 60%);
+  --ops-text-tertiary: rgb(0 0 0 / 45%);
+  color: var(--ops-text-primary);
+}
+[data-theme='light'] .digital-twin .map-station-detail .map-detail-kpis small:not(.has-alert) {
+  color: var(--ops-text-tertiary);
+}
 .digital-twin .map-station-detail::before {
   content: '';
   position: absolute;
