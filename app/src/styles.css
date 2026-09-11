@@ -14305,14 +14305,14 @@ button {
 .digital-twin .map-detail-kpis > div + div { padding-left: 16px; }
 .digital-twin .map-detail-kpis span { min-height: 0; }
 .digital-twin .map-detail-kpis strong { margin-top: auto; }
-.digital-twin .map-detail-events { margin-top: 20px; border-top: 0; gap: 12px; }
-.digital-twin .map-detail-event { display: flex; align-items: center; gap: 8px; padding: 8px 0 0; min-height: 28px; min-width: 0; }
+.digital-twin .map-detail-events { margin-top: 20px; border-top: 0; gap: 0; }
+.digital-twin .map-detail-event { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 0; min-height: 24px; min-width: 0; }
 .digital-twin .map-event-icon { flex: none; color: var(--ops-text-secondary); }
-.digital-twin .map-detail-event > strong { flex: 1; min-width: 0; }
-.digital-twin .map-event-progress { flex: none; gap: 5px; white-space: nowrap; }
-.digital-twin .map-event-progress span { font-size: 11px; font-weight: 600; }
-.digital-twin .map-event-progress small { font-size: 10px; color: var(--ops-text-secondary); }
-.digital-twin .map-event-progress progress { appearance: none; width: 44px; height: 4px; border: 0; border-radius: 999px; overflow: hidden; background: var(--ops-border); color: var(--ops-success); }
+.digital-twin .map-detail-event > strong { min-width: 0; font-size: 12px; line-height: 20px; }
+.digital-twin .map-event-progress { display: grid; grid-template-columns: 48px auto auto; gap: 8px; white-space: nowrap; }
+.digital-twin .map-event-progress span { font-size: 12px; line-height: 20px; font-weight: 500; }
+.digital-twin .map-event-progress small { font-size: 12px; line-height: 20px; font-variant-numeric: tabular-nums; color: var(--ops-text-secondary); }
+.digital-twin .map-event-progress progress { appearance: none; width: 48px; height: 4px; border: 0; border-radius: 999px; overflow: hidden; background: var(--ops-border); color: var(--ops-success); }
 .digital-twin .map-event-progress progress::-webkit-progress-bar { background: var(--ops-border); border-radius: 999px; }
 .digital-twin .map-event-progress progress::-webkit-progress-value { background: var(--ops-success); border-radius: 999px; }
 .digital-twin .map-event-progress progress::-moz-progress-bar { background: var(--ops-success); border-radius: 999px; }
