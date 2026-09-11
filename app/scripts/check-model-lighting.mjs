@@ -4,9 +4,9 @@ import { runInNewContext } from 'node:vm'
 import { parse } from '@babel/parser'
 
 const source = readFileSync(new URL('../src/components/DigitalTwin.jsx', import.meta.url), 'utf8')
-const config = JSON.parse(readFileSync(new URL('../src/data/stationModelConfig.json', import.meta.url), 'utf8'))
+const config = JSON.parse(readFileSync(new URL('../src/data/mapConfig.json', import.meta.url), 'utf8')).modelConfig
 const ast = parse(source, { sourceType: 'module', plugins: ['jsx'] })
-const names = ['normalizeModelEmission', 'clampModelParameter', 'loadStationModelConfig', 'addStationModelLayer', 'setStationBladeRotation', 'getModelRotationExpression']
+const names = ['normalizeModelEmission', 'clampModelParameter', 'addStationModelLayer', 'setStationBladeRotation', 'getModelRotationExpression']
 const functions = ast.program.body.filter((node) => node.type === 'FunctionDeclaration' && names.includes(node.id.name))
 const declarations = functions.map((node) => source.slice(node.start, node.end)).join('\n')
 const context = {
@@ -17,26 +17,13 @@ const context = {
   STATION_MODEL_SOURCE_ID: 'source', STATION_MODEL_LAYER_ID: 'layer',
   STATION_MODEL_BLADE_NODE: 'blade', STATION_MODEL_BLADE_STATE: 'rotation',
 }
-runInNewContext(`${declarations}; this.load = loadStationModelConfig; this.add = addStationModelLayer`, context)
+runInNewContext(`${declarations}; this.normalize = normalizeModelEmission; this.add = addStationModelLayer`, context)
 
-const saved = { ...config, scale: 4200, rotation: 91, emissive: 2 }
-delete saved.lightingVersion
-context.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
-const migrated = context.load()
-assert.equal(migrated.emissive, 0)
-assert.equal(migrated.scale, saved.scale)
-assert.equal(migrated.rotation, saved.rotation)
-assert.equal(JSON.stringify(migrated.stationElevations), JSON.stringify(saved.stationElevations))
-saved.lightingVersion = config.lightingVersion
-saved.emissive = 0.25
-assert.equal(context.load().emissive, 0.25)
 for (const value of [2, 1, -1, 'invalid']) {
-  saved.emissive = value
-  assert.equal(context.load().emissive, 0)
+  assert.equal(context.normalize(value), 0)
 }
 for (const value of [0, 0.25, 0.8]) {
-  saved.emissive = value
-  const emission = context.load().emissive
+  const emission = context.normalize(value)
   const mix = (lit) => lit * (1 - emission) + 0.8 * emission
   assert.ok(mix(0.2) < mix(0.6), 'Shadow must remain darker than the lit surface')
 }
@@ -51,18 +38,4 @@ for (const model of ['/models/station.glb', '/models/station_light.glb']) {
   assert.equal(layer.paint['model-receive-shadows'], true)
   assert.equal(modelSource.models.test.lightOverrides?.['light-ambient-intensity'], 0.8)
 }
-console.log('Model shadows and saved lighting migration passed.')
-
-// A fresh origin and an old port's cached placement must use the same project parameters.
-const stale = { ...config, scale: 5500, stationElevations: { lianghekou: -44000 } }
-delete stale.placementVersion
-for (const stored of [null, stale]) {
-  context.window.localStorage.getItem = () => JSON.stringify(stored)
-  const loaded = context.load()
-  assert.equal(loaded.scale, 5550)
-  assert.equal(JSON.stringify(loaded.stationElevations), JSON.stringify({
-    lianghekou: -23400, kela: -24500, zhalashan: -25800, labashan: -27000,
-  }))
-  assert.equal(loaded.placementVersion, config.placementVersion)
-}
-console.log('Project station heights survive fresh origins and stale caches.')
+console.log('Model shadows and emission limits passed.')

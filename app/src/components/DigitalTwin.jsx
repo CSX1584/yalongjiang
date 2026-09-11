@@ -20,21 +20,16 @@ import { useNavigate } from 'react-router-dom'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { useApp } from '../context/AppContext'
 import { stations as fallbackStations } from '../data/demoData'
-import stationModelConfig from '../data/stationModelConfig.json'
+import projectMapConfig from '../data/mapConfig.json'
+import { saveMapConfig } from './mapConfig.mjs'
 import { EVENT_PHASES, getStationEvents, getStationKpis } from './stationCardData.mjs'
 import { upgradeModelShadows } from './modelShadowQuality'
+import StationGlassSettings from './StationGlassSettings'
+import { glassCssVariables } from './stationGlassConfig.mjs'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN?.trim()
 // 临时录屏精简：录制结束后改为 false，恢复浮层和底图标注。
 const RECORDING_MODE = true
-// 镜头03：项目级初始视角，作为跨刷新、跨端口的永久默认值。
-const CAMERA_03 = {
-  center: [101.42225821860052, 27.759148667347134],
-  zoom: 10.503582834440447,
-  pitch: 80,
-  bearing: 0,
-}
-const DEFAULT_CAMERA = CAMERA_03
 const CAMERA_01 = {
   center: [101.0023073258, 27.7601268283],
   zoom: 8.0942241286,
@@ -71,23 +66,12 @@ const STATION_MODEL_BLADE_STATE = 'bladeRotation'
 const STATION_MODEL_BLADE_PERIOD_MS = 6000
 // World-space Y maximum of the current GLB, including its node translations.
 const STATION_MODEL_NATURAL_HEIGHT = 5.893375962972641
-const MODEL_CONFIG_STORAGE_KEY = 'ops-station-model-config-v1'
-const CAMERA_PRESET_STORAGE_KEY = 'ops-camera-preset-v2'
-const FALLBACK_SAVED_CAMERA = CAMERA_03
 const MODEL_SCALE_MIN = 100
 const MODEL_SCALE_MAX = 10000
 const MODEL_ELEVATION_MIN = -100000
 const MODEL_ELEVATION_MAX = 100000
-const DEFAULT_STATION_MODEL_CONFIG = stationModelConfig
+const DEFAULT_STATION_MODEL_CONFIG = projectMapConfig.modelConfig
 
-function loadSavedCamera() {
-  try {
-    const value = JSON.parse(window.localStorage.getItem(CAMERA_PRESET_STORAGE_KEY) || 'null')
-    return value && Array.isArray(value.center) && value.center.length === 2 ? value : null
-  } catch {
-    return null
-  }
-}
 const FALLBACK_POSITIONS = {
   lianghekou: { left: '25%', top: '32%' },
   kela: { left: '75%', top: '32%' },
@@ -108,7 +92,7 @@ const SUN_LIGHT_BY_PRESET = {
 }
 const OUTDOORS_DAY_AZIMUTH = 289
 const OUTDOORS_DAY_POLAR = 31
-const OUTDOORS_DAY_ELEVATION = 30
+const OUTDOORS_DAY_ELEVATION = 45
 
 function cloneLights(lights) {
   return (lights || []).map((light) => ({
@@ -159,43 +143,6 @@ function clampModelParameter(value, min, max, fallback) {
   return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback
 }
 
-function loadStationModelConfig() {
-  if (typeof window === 'undefined') return { ...DEFAULT_STATION_MODEL_CONFIG }
-  try {
-    const stored = JSON.parse(window.localStorage.getItem(MODEL_CONFIG_STORAGE_KEY))
-    // Project placement defaults supersede caches saved before the height correction.
-    if (!stored || stored.placementVersion !== DEFAULT_STATION_MODEL_CONFIG.placementVersion) {
-      return {
-        ...DEFAULT_STATION_MODEL_CONFIG,
-        stationElevations: { ...DEFAULT_STATION_MODEL_CONFIG.stationElevations },
-      }
-    }
-    const storedElevations = stored?.stationElevations && typeof stored.stationElevations === 'object'
-      ? stored.stationElevations
-      : {}
-    const stationElevations = Object.fromEntries(
-      Object.entries(storedElevations).map(([stationId, value]) => [
-        stationId,
-        clampModelParameter(value, MODEL_ELEVATION_MIN, MODEL_ELEVATION_MAX, DEFAULT_STATION_MODEL_CONFIG.elevation),
-      ]),
-    )
-    return {
-      placementVersion: DEFAULT_STATION_MODEL_CONFIG.placementVersion,
-      stationId: typeof stored?.stationId === 'string' ? stored.stationId : DEFAULT_STATION_MODEL_CONFIG.stationId,
-      scale: clampModelParameter(stored?.scale, MODEL_SCALE_MIN, MODEL_SCALE_MAX, DEFAULT_STATION_MODEL_CONFIG.scale),
-      rotation: clampModelParameter(stored?.rotation, -180, 180, DEFAULT_STATION_MODEL_CONFIG.rotation),
-      elevation: clampModelParameter(stored?.elevation, MODEL_ELEVATION_MIN, MODEL_ELEVATION_MAX, DEFAULT_STATION_MODEL_CONFIG.elevation),
-      stationElevations,
-      // Older presets used full emission as brightness, suppressing received shadows.
-      lightingVersion: DEFAULT_STATION_MODEL_CONFIG.lightingVersion,
-      emissive: stored.lightingVersion === DEFAULT_STATION_MODEL_CONFIG.lightingVersion
-        ? normalizeModelEmission(stored?.emissive)
-        : DEFAULT_STATION_MODEL_CONFIG.emissive,
-    }
-  } catch {
-    return { ...DEFAULT_STATION_MODEL_CONFIG }
-  }
-}
 
 function normalizeModelEmission(value) {
   // mix(lit, unlit, emission) reverses shadow contrast above 1; keep some lighting at the UI maximum.
@@ -395,13 +342,17 @@ function StationDetail({ station, onEnter, onSelect }) {
   const status = station.status === 'stopped' ? '停机' : getAlertCount(station) ? '告警' : '运行中'
   return (
     <article className={`map-station-detail tone-${getStationTone(station)}`} aria-label={`${station.name}运行卡片`}>
+      <canvas className="station-glass-canvas" aria-hidden="true" />
       <div className="map-detail-top">
         <div>
           <button className="map-detail-name" type="button" onClick={onSelect}><strong>{station.name}</strong></button>
-          <span>{station.output} · <em className={status === '告警' ? 'has-alert' : ''}>{status}</em></span>
+          <span>{station.output}</span>
         </div>
-        <button className="map-detail-enter" type="button" onClick={onEnter}>
-          进入场站 <ChevronRight size={14} aria-hidden="true" />
+        <span className={`map-detail-status status-${station.status === 'stopped' ? 'stopped' : status === '告警' ? (station.status === 'urgent' ? 'urgent' : 'warning') : 'normal'}`} role="img" aria-label={status} title={status}>
+          {status === '运行中' ? <Check size={16} weight="bold" aria-hidden="true" /> : <TriangleAlert size={16} weight="fill" aria-hidden="true" />}
+        </span>
+        <button className="map-detail-enter" type="button" onClick={onEnter} aria-label={`进入${station.name}`} title="进入场站">
+          <ChevronRight size={16} aria-hidden="true" />
         </button>
       </div>
       <div className="map-detail-kpis">
@@ -415,10 +366,13 @@ function StationDetail({ station, onEnter, onSelect }) {
       <div className="map-detail-events">
         {events.length ? events.map((event) => (
           <div className="map-detail-event" key={event.id}>
-            <div><strong title={event.title}>{event.title}</strong><em className={`severity-${event.severity}`}>{event.severity === 'urgent' ? '紧急' : event.severity === 'warning' ? '重要' : '一般'}</em></div>
-            <ol aria-label={`当前阶段：${EVENT_PHASES[event.phase]}`}>
-              {EVENT_PHASES.map((phase, index) => <li key={phase} className={index <= event.phase ? 'is-reached' : ''} aria-current={index === event.phase ? 'step' : undefined}><i />{phase}</li>)}
-            </ol>
+            <TriangleAlert className={`map-event-icon severity-${event.severity}`} size={16} weight="fill" role="img" aria-label={event.severity === 'urgent' ? '紧急' : event.severity === 'warning' ? '重要' : '一般'} />
+            <strong title={event.title}>{event.title}</strong>
+            <div className="map-event-progress">
+              <progress max={EVENT_PHASES.length} value={event.phase + 1} aria-label={`${event.title}：${EVENT_PHASES[event.phase]}`} />
+              <span>{event.phase === EVENT_PHASES.length - 1 ? '已闭环' : `待${EVENT_PHASES[event.phase]}`}</span>
+              <small>{event.phase + 1}/{EVENT_PHASES.length}</small>
+            </div>
           </div>
         )) : <span className="map-detail-empty"><Check size={14} />无活动事件 · 运行正常</span>}
       </div>
@@ -467,47 +421,75 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
   const mapStations = useMemo(() => (stations || fallbackStations)
     .map((station) => ({ ...station, mapCoordinates: STATION_COORDINATES[station.id] }))
     .filter((station) => station.mapCoordinates), [stations])
-  const [modelConfig, setModelConfig] = useState(loadStationModelConfig)
+  const [modelConfig, setModelConfig] = useState(() => projectMapConfig.modelConfig)
   const modelConfigRef = useRef(modelConfig)
   modelConfigRef.current = modelConfig
   const [selectedId, setSelectedId] = useState(() => mapStations.find((station) => station.id === 'kela')?.id || mapStations[0]?.id)
   const [modelStationId, setModelStationId] = useState(() => mapStations.some((station) => station.id === modelConfig.stationId)
     ? modelConfig.stationId
     : mapStations.find((station) => station.id === 'kela')?.id || mapStations[0]?.id)
-  const [flat, setFlat] = useState(false)
+  const [flat, setFlat] = useState(projectMapConfig.flat)
   const [pageFullscreen, setPageFullscreen] = useState(false)
-  const [lightPreset, setLightPreset] = useState(() => theme === 'light' ? 'day' : 'dusk')
+  const [lightPreset, setLightPreset] = useState(projectMapConfig.lightPreset)
   const lightPresetRef = useRef(lightPreset)
   lightPresetRef.current = lightPreset
-  const [sunAzimuth, setSunAzimuth] = useState(() => theme === 'light'
-    ? OUTDOORS_DAY_AZIMUTH
-    : SUN_LIGHT_BY_PRESET.dusk.direction[0])
-  const [sunElevation, setSunElevation] = useState(() => theme === 'light'
-    ? OUTDOORS_DAY_ELEVATION
-    : 90 - SUN_LIGHT_BY_PRESET.dusk.direction[1])
-  const [sunPositionCustom, setSunPositionCustom] = useState(false)
+  const [sunAzimuth, setSunAzimuth] = useState(projectMapConfig.sunAzimuth)
+  const [sunElevation, setSunElevation] = useState(projectMapConfig.sunElevation)
+  const [sunPositionCustom, setSunPositionCustom] = useState(projectMapConfig.sunPositionCustom)
   const customSunLightsRef = useRef(false)
   const officialSunLightsRef = useRef(null)
   const [layersOpen, setLayersOpen] = useState(false)
   const [camerasOpen, setCamerasOpen] = useState(false)
   const [cameraRequest, setCameraRequest] = useState(null)
-  const [savedCamera, setSavedCamera] = useState(() => loadSavedCamera() || FALLBACK_SAVED_CAMERA)
+  const [savedCamera, setSavedCamera] = useState(() => projectMapConfig.savedCamera)
   const [modelSettingsOpen, setModelSettingsOpen] = useState(false)
-  const [terrainEnabled, setTerrainEnabled] = useState(true)
-  const [weatherEnabled, setWeatherEnabled] = useState(false)
-  const [markersVisible, setMarkersVisible] = useState(true)
-  const [modelVisible, setModelVisible] = useState(true)
+  const [glassSettingsOpen, setGlassSettingsOpen] = useState(false)
+  const [glassConfig, setGlassConfig] = useState(() => projectMapConfig.glassConfig)
+  const glassConfigRef = useRef(glassConfig)
+  glassConfigRef.current = glassConfig
+  const [terrainEnabled, setTerrainEnabled] = useState(projectMapConfig.terrainEnabled)
+  const [weatherEnabled, setWeatherEnabled] = useState(projectMapConfig.weatherEnabled)
+  const [markersVisible, setMarkersVisible] = useState(projectMapConfig.markersVisible)
+  const [modelVisible, setModelVisible] = useState(projectMapConfig.modelVisible)
   const [modelSaveState, setModelSaveState] = useState('')
   const [mapReady, setMapReady] = useState(false)
   const [mapError, setMapError] = useState('')
   const [modelAvailable, setModelAvailable] = useState(false)
   const [modelError, setModelError] = useState('')
   const selected = mapStations.find((station) => station.id === selectedId) || mapStations[0]
+  const pbrReadyRef = useRef(false)
+  const pbrOptionsRef = useRef(null)
+  pbrOptionsRef.current = { config: modelConfig, visible: modelVisible, preset: lightPreset, azimuth: sunAzimuth, elevation: sunElevation, active }
+
   const modelStation = mapStations.find((station) => station.id === modelStationId) || mapStations[0]
 
   useEffect(() => {
-    if (savedCamera) window.localStorage.setItem(CAMERA_PRESET_STORAGE_KEY, JSON.stringify(savedCamera))
-  }, [savedCamera])
+    if (!active || !mapReady || mapError || !markersVisible) return
+    const map = mapRef.current
+    let cancelled = false
+    let detach
+    import('./stationGlass').then(({ attachStationGlass }) => {
+      if (!cancelled && map === mapRef.current) detach = attachStationGlass(map, panelRef.current, () => glassConfigRef.current)
+    }).catch(error => console.warn('Station glass initialization failed; using native glass.', error))
+    return () => { cancelled = true; detach?.() }
+  }, [active, mapReady, mapError, markersVisible, mapStyle, mapStations])
+
+  useEffect(() => { mapRef.current?.triggerRepaint() }, [glassConfig])
+
+  const [materialColors, setMaterialColors] = useState(projectMapConfig.materialColors)
+  const persistentConfig = useMemo(() => ({ modelConfig: { ...modelConfig, stationId: modelStationId }, savedCamera, flat, lightPreset, sunAzimuth, sunElevation, sunPositionCustom, glassConfig, terrainEnabled, weatherEnabled, markersVisible, modelVisible, materialColors }), [modelConfig, modelStationId, savedCamera, flat, lightPreset, sunAzimuth, sunElevation, sunPositionCustom, glassConfig, terrainEnabled, weatherEnabled, markersVisible, modelVisible, materialColors])
+  const lastConfig = useRef(JSON.stringify(persistentConfig))
+  const persist = useCallback(async () => {
+    setModelSaveState('saving')
+    try { await saveMapConfig(persistentConfig); setModelSaveState('saved') }
+    catch { setModelSaveState('error'); throw new Error('项目参数写入失败，请重试') }
+  }, [persistentConfig])
+  useEffect(() => {
+    const serialized = JSON.stringify(persistentConfig)
+    if (lastConfig.current === serialized) return
+    lastConfig.current = serialized
+    persist().catch(() => {})
+  }, [persistentConfig, persist])
 
   useEffect(() => {
     if (!mapStations.some((station) => station.id === modelStationId)) setModelStationId(mapStations[0]?.id)
@@ -556,7 +538,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
       const point = map.project(station.mapCoordinates, getStationModelTopHeight(modelConfigRef.current, station.id) - terrainHeight)
       const visible = point.x > -180 && point.y > -90 && point.x < canvas.clientWidth + 180 && point.y < canvas.clientHeight + 90
       // Reserve the expanded width; the card grows upward from the model top.
-      const x = Math.max(158, Math.min(canvas.clientWidth - 158, point.x))
+      const x = Math.max(188, Math.min(canvas.clientWidth - 188, point.x))
       const y = point.y
       node.style.transform = `translate3d(${x}px, ${y}px, 0)`
       node.style.opacity = visible ? '1' : '0'
@@ -589,7 +571,9 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
         return
       }
       try {
-        const { default: mapboxgl } = await import('mapbox-gl')
+        const [{ default: mapboxgl }, { createStationPbrLayer }] = await Promise.all([
+          import('mapbox-gl'), import('./stationPbrLayer'),
+        ])
         if (disposed || !mapContainerRef.current) return
         if (!mapboxgl.supported()) {
           fail('当前浏览器不支持 WebGL 地图')
@@ -602,7 +586,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
         map = new mapboxgl.Map({
           container: mapContainerRef.current,
           style: mapStyle,
-          ...CAMERA_03,
+          ...savedCamera,
           antialias: true,
           attributionControl: false,
           maxPitch: 80,
@@ -630,6 +614,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
             },
           },
         })
+        pbrReadyRef.current = false
         mapRef.current = map
         map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
         map.addControl(new mapboxgl.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-left')
@@ -672,6 +657,15 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
               stationModelFeatures,
               theme === 'light' ? '/models/station_light.glb' : STATION_MODEL_URL,
             )
+            if (modelAdded) map.addLayer(createStationPbrLayer({
+              mapboxgl,
+              theme,
+              features: stationModelFeatures.features,
+              url: theme === 'light' ? '/models/station_light.glb' : STATION_MODEL_URL,
+              getOptions: () => pbrOptionsRef.current,
+              onReady: () => { pbrReadyRef.current = true },
+              onError: () => setModelError('增强材质加载失败，已保留基础模型'),
+            }))
             setModelAvailable(modelAdded)
             if (!modelAdded) setModelError('电站模型图层加载失败')
             applyWeather(map, theme === 'dark')
@@ -727,21 +721,13 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
     }
   }, [corridor, mapStyle, stationFeatures, stationModelFeatures, syncMarkers])
 
-  useEffect(() => {
-    setLightPreset(theme === 'light' ? 'day' : 'dusk')
-    setSunAzimuth(theme === 'light' ? OUTDOORS_DAY_AZIMUTH : SUN_LIGHT_BY_PRESET.dusk.direction[0])
-    setSunElevation(theme === 'light' ? OUTDOORS_DAY_ELEVATION : 90 - SUN_LIGHT_BY_PRESET.dusk.direction[1])
-    setSunPositionCustom(false)
-    customSunLightsRef.current = false
-    officialSunLightsRef.current = null
-    setWeatherEnabled(theme === 'dark')
-  }, [theme])
 
   useEffect(() => {
     const map = mapRef.current
     if (!mapReady || !map) return
     try {
       const appearance = getMapAppearance(lightPreset)
+      if (theme === 'light') map.setFog({ ...appearance.fog, range: [3, 15], color: lightPreset === 'night' ? '#17252c' : '#e6eff5', 'horizon-blend': 0.08, 'star-intensity': 0 })
       const sunByPreset = SUN_LIGHT_BY_PRESET[lightPreset] || SUN_LIGHT_BY_PRESET.day
       try { map.setConfigProperty?.('basemap', 'lightPreset', lightPreset) } catch { /* style may not expose basemap config */ }
       if (theme === 'light' && lightPreset === 'day' && !sunPositionCustom && !customSunLightsRef.current) {
@@ -793,7 +779,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
     if (!mapReady || !map || !map.getSource(terrain.source)) return
     try {
       map.setTerrain(!flat && terrainEnabled ? terrain : null)
-      map.easeTo({ pitch: flat ? 0 : CAMERA_03.pitch, bearing: flat ? 0 : CAMERA_03.bearing, duration: 720, essential: true })
+      map.easeTo({ pitch: flat ? 0 : savedCamera.pitch, bearing: flat ? 0 : savedCamera.bearing, duration: 720, essential: true })
     } catch {
       // A terrain toggle failure should not blank an otherwise usable map.
     }
@@ -854,6 +840,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
     const stationIds = mapStations.map((station) => station.id)
     let animationFrameId
     const frame = (timestamp) => {
+      if (pbrReadyRef.current) return
       if (map.getSource(STATION_MODEL_SOURCE_ID)) {
         const angle = -((timestamp % STATION_MODEL_BLADE_PERIOD_MS) / STATION_MODEL_BLADE_PERIOD_MS) * 360
         setStationBladeRotation(map, stationIds, angle)
@@ -911,7 +898,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
     const resetStationId = mapStations.find((station) => station.id === 'kela')?.id || mapStations[0]?.id
     setSelectedId(resetStationId)
     setModelStationId(resetStationId)
-    mapRef.current?.easeTo({ ...CAMERA_03, pitch: flat ? 0 : CAMERA_03.pitch, bearing: flat ? 0 : CAMERA_03.bearing, duration: 900, essential: true })
+    mapRef.current?.easeTo({ ...savedCamera, pitch: flat ? 0 : savedCamera.pitch, bearing: flat ? 0 : savedCamera.bearing, duration: 900, essential: true })
   }
 
   const focusSelected = () => {
@@ -950,23 +937,17 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
     setModelSaveState('')
   }
 
-  const saveModelConfig = () => {
-    try {
-      window.localStorage.setItem(MODEL_CONFIG_STORAGE_KEY, JSON.stringify({ ...modelConfig, stationId: modelStationId }))
-      setModelSaveState('saved')
-    } catch {
-      setModelSaveState('error')
-    }
-  }
+  const saveModelConfig = () => { persist().catch(() => {}) }
 
   if (!selected) return null
 
   return (
-    <section ref={panelRef} className={`digital-twin${pageFullscreen ? ' is-page-fullscreen' : ''}`} aria-label="雅砻江流域电站数字孪生">
+    <section ref={panelRef} style={glassCssVariables(glassConfig)} className={`digital-twin${pageFullscreen ? ' is-page-fullscreen' : ''}`} aria-label="雅砻江流域电站数字孪生">
       {RECORDING_MODE ? <style>{`
         .digital-twin .map-legend,
         .digital-twin .mapboxgl-ctrl-scale { display: none !important; }
       `}</style> : null}
+      <span role="status" style={{ position: 'absolute', right: 16, bottom: 4, zIndex: 10 }}>{modelSaveState === 'error' ? '项目参数保存失败，请打开材质面板重试' : modelSaveState === 'saving' ? '正在保存地图参数…' : ''}</span>
       <header className="scene-toolbar">
         <div>
           <span className="section-kicker">BASIN DIGITAL TWIN · MAPBOX 3D</span>
@@ -981,9 +962,10 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
             <button className={!flat ? 'is-active' : ''} type="button" onClick={() => setFlat(false)}>3D</button>
             <button className={flat ? 'is-active' : ''} type="button" onClick={() => setFlat(true)}>平面</button>
           </div>
-          <button className={camerasOpen ? 'is-active' : ''} type="button" title="镜头列表" aria-label="镜头列表" aria-expanded={camerasOpen} aria-haspopup="dialog" onClick={() => { setLayersOpen(false); setModelSettingsOpen(false); setCamerasOpen((value) => !value) }}><Camera size={16} /></button>
-          <button className={layersOpen ? 'is-active' : ''} type="button" title="图层与光照" aria-label="图层与光照" aria-expanded={layersOpen} aria-haspopup="dialog" onClick={() => { setCamerasOpen(false); setModelSettingsOpen(false); setLayersOpen((value) => !value) }}><Layers3 size={16} /></button>
-          <button className={modelSettingsOpen ? 'is-active material-entry' : 'material-entry'} type="button" title="编辑设备材质" aria-label="编辑设备材质" aria-pressed={modelSettingsOpen} onClick={() => { setCamerasOpen(false); setLayersOpen(false); setModelSettingsOpen((value) => !value) }}><SlidersHorizontal size={15} /><span>材质</span></button>
+          <button className={camerasOpen ? 'is-active' : ''} type="button" title="镜头列表" aria-label="镜头列表" aria-expanded={camerasOpen} aria-haspopup="dialog" onClick={() => { setGlassSettingsOpen(false); setLayersOpen(false); setModelSettingsOpen(false); setCamerasOpen((value) => !value) }}><Camera size={16} /></button>
+          <button className={layersOpen ? 'is-active' : ''} type="button" title="图层与光照" aria-label="图层与光照" aria-expanded={layersOpen} aria-haspopup="dialog" onClick={() => { setGlassSettingsOpen(false); setCamerasOpen(false); setModelSettingsOpen(false); setLayersOpen((value) => !value) }}><Layers3 size={16} /></button>
+          <button className={`glass-entry${glassSettingsOpen ? ' is-active' : ''}`} type="button" title="卡片玻璃材质" aria-label="卡片玻璃材质" aria-expanded={glassSettingsOpen} aria-haspopup="dialog" aria-controls="station-glass-settings" onClick={() => { setCamerasOpen(false); setLayersOpen(false); setModelSettingsOpen(false); setGlassSettingsOpen(value => !value) }}>玻璃</button>
+          <button className={modelSettingsOpen ? 'is-active material-entry' : 'material-entry'} type="button" title="编辑设备材质" aria-label="编辑设备材质" aria-pressed={modelSettingsOpen} onClick={() => { setGlassSettingsOpen(false); setCamerasOpen(false); setLayersOpen(false); setModelSettingsOpen((value) => !value) }}><SlidersHorizontal size={15} /><span>材质</span></button>
           <button type="button" title="定位选中电站" onClick={focusSelected} disabled={!mapReady}><LocateFixed size={16} /></button>
           <button type="button" title="复位视角" onClick={resetView} disabled={!mapReady}><RotateCcw size={16} /></button>
           <button type="button" title={pageFullscreen ? '退出网页全屏（Esc）' : '地图网页全屏'} aria-label={pageFullscreen ? '退出网页全屏' : '地图网页全屏'} aria-pressed={pageFullscreen} onClick={() => setPageFullscreen((value) => !value)}>{pageFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}</button>
@@ -1049,13 +1031,15 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
           </div>
         ) : null}
 
+        {glassSettingsOpen ? <StationGlassSettings config={glassConfig} onSave={persist} onChange={setGlassConfig} onClose={() => { setGlassSettingsOpen(false); panelRef.current?.querySelector('[aria-label="卡片玻璃材质"]')?.focus() }} /> : null}
+
         {modelSettingsOpen ? (
           <form className="map-model-settings" aria-label="电站模型参数" onSubmit={(event) => { event.preventDefault(); saveModelConfig() }}>
             <header>
               <span><strong>模型参数</strong><small>即时预览 · 四个电站</small></span>
               <button type="button" title="关闭模型参数" aria-label="关闭模型参数" onClick={() => setModelSettingsOpen(false)}><X size={15} /></button>
             </header>
-            <div className="material-groups">{['底座','风车','储能','光伏板'].map((name) => <label key={name}><span>{name}</span><input type="color" defaultValue={name==='光伏板'?'#17345f':name==='风车'?'#f5f7fa':name==='储能'?'#d8dde5':'#b7b6af'} aria-label={`${name}材质颜色`} /><small>独立材质</small></label>)}</div>
+            <div className="material-groups">{['底座','风车','储能','光伏板'].map((name) => <label key={name}><span>{name}</span><input type="color" value={materialColors[name]} onChange={event => setMaterialColors(current => ({ ...current, [name]: event.target.value }))} aria-label={`${name}材质颜色`} /><small>独立材质</small></label>)}</div>
             <label className="map-model-field">
               <span>调整电站</span>
               <select value={modelStation?.id || ''} aria-label="选择要调整高度的电站" onChange={(event) => setModelStationId(event.target.value)}>
@@ -1079,7 +1063,7 @@ export default function DigitalTwin({ stations = fallbackStations, active = true
               <input type="range" min="0" max="0.8" step="0.01" value={normalizeModelEmission(modelConfig.emissive)} aria-label="模型自发光强度" onChange={(event) => updateModelConfig('emissive', event.target.value)} />
             </label>
             <footer>
-              <span role="status" aria-live="polite">{modelSaveState === 'saved' ? '参数已保存' : modelSaveState === 'error' ? '保存失败' : '调整立即生效'}</span>
+              <span role="status" aria-live="polite">{modelSaveState === 'saved' ? '已写入项目' : modelSaveState === 'error' ? '项目保存失败，请重试' : modelSaveState === 'saving' ? '正在写入项目…' : '调整后自动写入项目'}</span>
               <button type="submit"><FloppyDisk size={14} />保存参数</button>
             </footer>
           </form>

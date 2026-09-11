@@ -1,15 +1,15 @@
 {
-  "stationId": "lianghekou",
-  "scale": 5550,
+  "placementVersion": 2,
+  "stationId": "labashan",
+  "scale": 4950,
   "rotation": 141,
   "elevation": -23100,
   "stationElevations": {
-    "lianghekou": -23400,
-    "kela": -24500,
-    "zhalashan": -25800,
-    "labashan": -27000
+    "lianghekou": -20700,
+    "kela": -21200,
+    "zhalashan": -21700,
+    "labashan": -23600
   },
-  "emissive": 0,
   "lightingVersion": 1,
-  "placementVersion": 2
+  "emissive": 0
 }

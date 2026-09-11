@@ -16,6 +16,7 @@
 
 ## 实施要求
 
+- 每次推送 GitHub 前，必须按照 [memory/FACT.md](memory/FACT.md#推送-github-前保存地图参数) 执行一次地图参数保存，核对 `app/src/data/mapConfig.json` 已落盘，并将配置变更纳入提交后再推送。
 - 优先复用现有 React、CSS、token 和组件；新 UI 依赖不作为一次视觉调整的默认全量迁移。
 - 新页面和功能沿用 `memory/FACT.md` 的目标，并使用 `memory/DESIGN_TOKENS.md` 的语义 token。
 - 若实际引入 HeroUI，先验证 React 19、Tailwind CSS v4、样式导入顺序、全局 reset 冲突和包体影响，再做局部试点。

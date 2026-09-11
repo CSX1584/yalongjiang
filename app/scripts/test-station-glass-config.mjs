@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict'
+import { DEFAULT_GLASS_CONFIG, GLASS_STORAGE_KEY, normalizeGlassConfig, loadGlassConfig, saveGlassConfig, glassCssVariables, glassUniforms, glassSamplingPadding } from '../src/components/stationGlassConfig.mjs'
+
+const values = new Map()
+const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) }
+assert.deepEqual(loadGlassConfig(storage), DEFAULT_GLASS_CONFIG)
+const edited = { ...DEFAULT_GLASS_CONFIG, refDistance: 0.093, blurRadius: 0, glareAngle: 90, tintColor: '#ab1234', tintOpacity: 47.8, blurEdge: false }
+saveGlassConfig(edited, storage)
+assert.deepEqual(loadGlassConfig(storage), edited, 'Saved settings must survive a fresh load')
+assert.ok(values.has(GLASS_STORAGE_KEY))
+const invalid = normalizeGlassConfig({ refDistance: 99, blurRadius: -10, refFresnelRange: 0, glareAngle: NaN, tintOpacity: Infinity, tintColor: 'red; display:none', blurEdge: 'false', unknown: 'discard' })
+assert.equal(invalid.refDistance, 0.2)
+assert.equal(invalid.blurRadius, 0)
+assert.equal(invalid.refFresnelRange, 1, 'Keep shader divisors nonzero')
+assert.equal(invalid.glareAngle, -45)
+assert.equal(invalid.tintOpacity, DEFAULT_GLASS_CONFIG.tintOpacity)
+assert.equal(invalid.tintColor, '#ffffff')
+assert.equal(invalid.blurEdge, true)
+assert.equal('unknown' in invalid, false)
+values.set(GLASS_STORAGE_KEY, '{broken')
+assert.deepEqual(loadGlassConfig(storage), DEFAULT_GLASS_CONFIG, 'Corrupt storage must recover to defaults')
+const blocked = { getItem() { throw Error('blocked') }, setItem() { throw Error('quota') } }
+assert.deepEqual(loadGlassConfig(blocked), DEFAULT_GLASS_CONFIG)
+assert.throws(() => saveGlassConfig(edited, blocked), /quota/, 'Failed saves must be reported to the panel')
+const uniforms = glassUniforms(edited)
+assert.equal(uniforms.u_glareAngle, Math.PI / 2)
+assert.equal(uniforms.u_refFresnelFactor, 0.2)
+assert.equal(uniforms.u_glareFactor, 0.9)
+assert.equal(uniforms.u_blurRadius, 0)
+assert.equal(uniforms.u_blurEdge, 0)
+const css = glassCssVariables(edited)
+assert.equal(css['--ops-station-glass-tint'], css['--ops-station-glass-tint-open'])
+assert.ok(css['--ops-station-glass-shadow'].startsWith('0px 10px 17.54px'))
+assert.equal(css['--ops-station-glass-blur'], '0px')
+assert.equal(glassSamplingPadding(DEFAULT_GLASS_CONFIG), 208)
+assert.equal(glassSamplingPadding(normalizeGlassConfig({ refDistance: 0.2, refFactor: 4, refDispersion: 50, blurRadius: 200 })), 512)
+console.log('Station glass settings: persistence, validation, failures, uniforms and sampling bounds passed')

@@ -14175,13 +14175,6 @@ button {
 .map-detail-event em { flex-shrink: 0; font-size: 10px; font-style: normal; color: var(--ops-text-secondary); }
 .map-detail-event .severity-urgent { color: var(--ops-urgent); }
 .map-detail-event .severity-warning { color: var(--ops-warning); }
-.map-detail-event ol { position: relative; display: flex; justify-content: space-between; list-style: none; padding: 0; margin: 9px 0 0; }
-.map-detail-event ol::before { content: ''; position: absolute; top: 3px; left: 9px; right: 9px; height: 1px; background: var(--ops-border); }
-.map-detail-event li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 9px; color: var(--ops-text-tertiary); }
-.map-detail-event li i { width: 6px; height: 6px; border-radius: 50%; background: var(--ops-border); }
-.map-detail-event .is-reached i { background: var(--ops-success); }
-.map-detail-event [aria-current='step'] { color: var(--ops-success); font-weight: 600; }
-.map-detail-event [aria-current='step'] i { box-shadow: none; }
 .map-detail-empty { display: flex; gap: 5px; margin-top: 10px; color: var(--ops-success); font-size: 11px; }
 @media (max-width: 1250px) {
   .map-station-anchor > .map-station-detail,
@@ -14191,7 +14184,7 @@ button {
 .digital-twin .map-fallback-notice { top: 80px; bottom: auto; }
 /* Station labels stay compact until the pointer reaches them. */
 .map-station-anchor > .map-station-detail,
-.fallback-station-card > .map-station-detail { top: auto; bottom: 16px; width: 156px; padding: 8px 24px; border-radius: 999px; transform: translateX(-50%); transition: width 160ms ease, border-radius 160ms ease, padding 160ms ease; }
+.fallback-station-card > .map-station-detail { top: auto; bottom: 16px; width: 215px; min-height: 66px; padding: 16px 24px; border-radius: 75px; transform: translateX(-50%); transition: width 160ms ease, border-radius 160ms ease, padding 160ms ease; }
 .map-station-anchor > .map-station-detail .map-detail-top > div,
 .fallback-station-card > .map-station-detail .map-detail-top > div { gap: 2px; }
 .map-station-anchor > .map-station-detail .map-detail-top,
@@ -14205,7 +14198,7 @@ button {
 .map-station-anchor:hover > .map-station-detail,
 .map-station-anchor:focus-within > .map-station-detail,
 .fallback-station-card:hover > .map-station-detail,
-.fallback-station-card:focus-within > .map-station-detail { width: 300px; padding: 15px; border-radius: 14px; }
+.fallback-station-card:focus-within > .map-station-detail { width: 352px; min-height: 224px; padding: 24px; border-radius: 24px; }
 .map-station-anchor:hover > .map-station-detail .map-detail-enter,
 .map-station-anchor:focus-within > .map-station-detail .map-detail-enter,
 .fallback-station-card:hover > .map-station-detail .map-detail-enter,
@@ -14218,3 +14211,142 @@ button {
 .map-station-anchor:focus-within > .map-station-detail .map-detail-events,
 .fallback-station-card:hover > .map-station-detail .map-detail-events,
 .fallback-station-card:focus-within > .map-station-detail .map-detail-events { display: grid; }
+
+/* Native glass fallback: live compositor blur, no duplicate map/WebGL loop. */
+.digital-twin {
+  --ops-station-glass: rgb(27 30 31 / 58%);
+  --ops-station-glass-open: rgb(27 30 31 / 82%);
+  --ops-station-glass-rim: rgb(255 255 255 / 32%);
+  --ops-station-glass-tint: 0.106 0.118 0.122 0.48;
+  --ops-station-glass-tint-open: 0.106 0.118 0.122 0.7;
+  --ops-station-glass-shadow: 0 12px 32px rgb(0 0 0 / 16%);
+}
+[data-theme='light'] .digital-twin {
+  --ops-station-glass: #ffffff52;
+  --ops-station-glass-open: var(--ops-station-glass);
+  --ops-station-glass-rim: rgb(255 255 255 / 88%);
+  --ops-station-glass-tint: 1 1 1 0.3215686275;
+  --ops-station-glass-tint-open: 1 1 1 0.3215686275;
+  /* Studio's Y axis points up; (0, -10) casts the shadow 10px down in CSS. */
+  --ops-station-glass-shadow: 0 10px 17.54px rgb(0 0 0 / 15%);
+}
+.digital-twin .map-station-detail {
+  background: var(--ops-station-glass);
+  -webkit-backdrop-filter: blur(var(--ops-station-glass-blur, 18px)) saturate(115%);
+  backdrop-filter: blur(var(--ops-station-glass-blur, 18px)) saturate(115%);
+  box-shadow: var(--ops-station-glass-shadow),
+    inset 0 1px 1px var(--ops-station-glass-rim),
+    inset 0 -1px 1px rgb(0 0 0 / 12%);
+}
+.digital-twin .map-station-detail::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--ops-station-glass-rim), transparent 38%, rgb(255 255 255 / 12%) 65%, var(--ops-station-glass-rim));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+}
+.digital-twin :is(.map-station-anchor, .fallback-station-card):is(:hover, :focus-within) > .map-station-detail {
+  background: var(--ops-station-glass-open);
+  --ops-station-glass-tint: var(--ops-station-glass-tint-open);
+}
+.digital-twin .map-station-detail :is(.map-detail-kpis span, .map-detail-kpis small, .map-detail-event li) {
+  color: var(--ops-text-secondary);
+}
+.digital-twin .map-station-detail .map-detail-event [aria-current='step'] { color: var(--ops-success); }
+.digital-twin .map-station-detail .map-detail-kpis .has-alert { color: var(--ops-warning); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .digital-twin .map-station-detail { background: var(--ops-surface-main); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .digital-twin .map-station-detail { background: var(--ops-surface-main); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .digital-twin .map-station-detail { transition: none; }
+}
+
+/* Shader background sits behind live, selectable DOM text and controls. */
+.station-glass-canvas { display: none; }
+.digital-twin .map-station-detail.has-liquid-glass {
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  isolation: isolate;
+  box-shadow: var(--ops-station-glass-shadow);
+}
+.digital-twin .has-liquid-glass > .station-glass-canvas {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: -2;
+}
+.digital-twin .map-station-detail.has-liquid-glass::before { content: none; }
+
+
+/* Figma 206:234: 215×66 pill, 352×224 details; keep the app's typography. */
+.digital-twin .map-station-detail .map-detail-top { align-items: center; min-height: 34px; gap: 16px; }
+.digital-twin .map-detail-top > div { flex: 1; }
+.digital-twin .map-detail-top .map-detail-status { display: inline-flex; flex: none; color: var(--ops-success); }
+.digital-twin .map-detail-top .status-warning { color: var(--ops-warning); }
+.digital-twin .map-detail-top :is(.status-urgent, .status-stopped) { color: var(--ops-urgent); }
+.digital-twin :is(.map-station-anchor, .fallback-station-card):is(:hover, :focus-within) .map-detail-status { display: none; }
+.digital-twin .map-detail-top .map-detail-enter { align-self: flex-start; width: 20px; height: 20px; justify-content: center; color: var(--ops-text-secondary); }
+.digital-twin .map-detail-kpis { gap: 16px; margin-top: 20px; }
+.digital-twin .map-detail-kpis > div { gap: 4px; min-height: 74px; }
+.digital-twin .map-detail-kpis > div + div { padding-left: 16px; }
+.digital-twin .map-detail-kpis span { min-height: 0; }
+.digital-twin .map-detail-kpis strong { margin-top: auto; }
+.digital-twin .map-detail-events { margin-top: 20px; border-top: 0; gap: 12px; }
+.digital-twin .map-detail-event { display: flex; align-items: center; gap: 8px; padding: 8px 0 0; min-height: 28px; min-width: 0; }
+.digital-twin .map-event-icon { flex: none; color: var(--ops-text-secondary); }
+.digital-twin .map-detail-event > strong { flex: 1; min-width: 0; }
+.digital-twin .map-event-progress { flex: none; gap: 5px; white-space: nowrap; }
+.digital-twin .map-event-progress span { font-size: 11px; font-weight: 600; }
+.digital-twin .map-event-progress small { font-size: 10px; color: var(--ops-text-secondary); }
+.digital-twin .map-event-progress progress { appearance: none; width: 44px; height: 4px; border: 0; border-radius: 999px; overflow: hidden; background: var(--ops-border); color: var(--ops-success); }
+.digital-twin .map-event-progress progress::-webkit-progress-bar { background: var(--ops-border); border-radius: 999px; }
+.digital-twin .map-event-progress progress::-webkit-progress-value { background: var(--ops-success); border-radius: 999px; }
+.digital-twin .map-event-progress progress::-moz-progress-bar { background: var(--ops-success); border-radius: 999px; }
+
+.digital-twin .map-event-icon.severity-warning { color: var(--ops-warning); }
+.digital-twin .map-event-icon.severity-urgent { color: var(--ops-urgent); }
+
+.scene-tools > .glass-entry { font-size: 11px; white-space: nowrap; }
+.map-model-settings.station-glass-settings {
+  left: auto;
+  right: 16px;
+  width: min(320px, calc(100% - 32px));
+  max-height: calc(100% - 184px);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  overflow: hidden;
+  padding: 16px;
+  border-radius: var(--ops-radius-control);
+  background: var(--ops-surface-main);
+  box-shadow: 0 12px 36px rgb(0 0 0 / 14%);
+}
+.glass-settings-body { overflow-y: auto; overscroll-behavior: contain; min-height: 0; padding-right: 4px; }
+.is-page-fullscreen .station-glass-settings { max-height: calc(100% - 96px); }
+.glass-settings-body details + details { margin-top: 12px; border-top: 1px solid var(--ops-border-soft); padding-top: 12px; }
+.glass-settings-body summary { cursor: pointer; color: var(--ops-text-primary); font-size: 12px; font-weight: 600; }
+.glass-parameter-field { display: grid; grid-template-columns: 1fr 76px; align-items: center; gap: 4px 12px; margin-top: 12px; color: var(--ops-text-secondary); font-size: 11px; }
+.glass-parameter-field input[type='number'] { width: 100%; min-width: 0; height: 28px; padding: 0 5px; text-align: right; font: inherit; color: var(--ops-text-primary); background: var(--ops-surface-inner); border: 1px solid var(--ops-border-soft); border-radius: var(--ops-radius-panel); font-variant-numeric: tabular-nums; }
+.glass-parameter-field input[type='range'] { grid-column: 1 / -1; width: 100%; margin: 0; accent-color: var(--ops-accent-primary); cursor: pointer; }
+.glass-check, .glass-color { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--ops-text-secondary); font-size: 11px; }
+.glass-check input { accent-color: var(--ops-accent-primary); }
+.glass-color input { width: 32px; height: 28px; padding: 2px; border: 1px solid var(--ops-border-soft); background: var(--ops-surface-inner); border-radius: var(--ops-radius-panel); }
+.glass-color output { font-variant-numeric: tabular-nums; }
+.station-glass-settings > footer { display: grid; gap: 10px; padding-top: 12px; border-top: 1px solid var(--ops-border-soft); }
+.station-glass-settings > footer > div { display: flex; justify-content: space-between; gap: 8px; }
+.station-glass-settings > footer .glass-reset { color: var(--ops-text-secondary); background: var(--ops-surface-inner); font-weight: 500; }
+.station-glass-settings > footer [role='alert'] { color: var(--ops-urgent); }
+.station-glass-settings :is(input, summary, button):focus-visible { outline: 2px solid var(--ops-accent-primary); outline-offset: 2px; }

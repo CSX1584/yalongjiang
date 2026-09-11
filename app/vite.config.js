@@ -1,3 +1,4 @@
+import { mapConfigPlugin } from './scripts/map-config-plugin.mjs'
 import { readFileSync } from 'node:fs'
 import { basename, resolve } from 'node:path'
 import { defineConfig } from 'vite'
@@ -81,7 +82,7 @@ export default defineConfig({
   // Relative asset URLs allow the production build to run inside the
   // self-contained macOS WebKit launcher as well as behind any web server.
   base: './',
-  plugins: [solarPlantMonitorAssets(), react(), tailwindcss()],
+  plugins: [mapConfigPlugin(), solarPlantMonitorAssets(), react(), tailwindcss()],
   optimizeDeps: {
     exclude: ['solar-plant-monitor-embed'],
     include: [

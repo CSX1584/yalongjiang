@@ -1,0 +1,64 @@
+{
+  "modelConfig": {
+    "placementVersion": 2,
+    "stationId": "labashan",
+    "scale": 4950,
+    "rotation": 141,
+    "elevation": -23100,
+    "stationElevations": {
+      "lianghekou": -20700,
+      "kela": -21200,
+      "zhalashan": -21700,
+      "labashan": -23600
+    },
+    "lightingVersion": 1,
+    "emissive": 0
+  },
+  "savedCamera": {
+    "center": [
+      101.45251411897169,
+      27.745808487079756
+    ],
+    "zoom": 10.594335144026546,
+    "pitch": 80,
+    "bearing": 0
+  },
+  "flat": false,
+  "lightPreset": "day",
+  "sunAzimuth": 289,
+  "sunElevation": 30,
+  "sunPositionCustom": true,
+  "glassConfig": {
+    "refThickness": 18.7,
+    "refDistance": 0.07,
+    "refFactor": 1.71,
+    "refDispersion": 12.3,
+    "blurRadius": 30,
+    "refFresnelRange": 30,
+    "refFresnelHardness": 20,
+    "refFresnelFactor": 20,
+    "glareRange": 24.38,
+    "glareHardness": 20,
+    "glareFactor": 90,
+    "glareConvergence": 50,
+    "glareOppositeFactor": 80,
+    "glareAngle": -45,
+    "tintOpacity": 32.16,
+    "shadowExpand": 17.54,
+    "shadowFactor": 15,
+    "shadowX": 0,
+    "shadowY": -10,
+    "blurEdge": true,
+    "tintColor": "#ffffff"
+  },
+  "terrainEnabled": true,
+  "weatherEnabled": false,
+  "markersVisible": true,
+  "modelVisible": true,
+  "materialColors": {
+    "底座": "#b7b6af",
+    "风车": "#f5f7fa",
+    "储能": "#d8dde5",
+    "光伏板": "#17345f"
+  }
+}
